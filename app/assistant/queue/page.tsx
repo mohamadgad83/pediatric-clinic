@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, Clock, User, Phone, RefreshCw, Plus } from 'lucide-react'
 
+// ✅ تعريف الـ Interface بشكل صحيح
 interface QueueItem {
     id: string
     patient_id: string
@@ -18,7 +19,7 @@ interface QueueItem {
         name: string
         parent_name: string
         parent_phone: string
-    }
+    } | null
 }
 
 export default function AssistantQueuePage() {
@@ -52,6 +53,7 @@ export default function AssistantQueuePage() {
         fetchPatients()
     }, [user, loading, router])
 
+    // ✅ دالة جلب قائمة الانتظار - تم تعديلها
     const fetchQueue = async () => {
         setLoadingQueue(true)
         const todayStr = new Date().toISOString().split('T')[0]
@@ -77,7 +79,19 @@ export default function AssistantQueuePage() {
             .order('queue_number', { ascending: true })
 
         if (!error && data) {
-            setQueue(data as QueueItem[])
+            // ✅ إعادة تشكيل البيانات بشكل صحيح
+            const formattedData: QueueItem[] = data.map((item: any) => ({
+                id: item.id,
+                patient_id: item.patient_id,
+                queue_number: item.queue_number,
+                status: item.status,
+                appointment_date: item.appointment_date,
+                vital_signs: item.vital_signs || {},
+                notes: item.notes || null,
+                patients: item.patients?.[0] || null
+            }))
+            
+            setQueue(formattedData)
         }
         setLoadingQueue(false)
     }
@@ -96,7 +110,6 @@ export default function AssistantQueuePage() {
 
         setAddingToQueue(true)
 
-        // جلب رقم الدور التالي
         const { data: queueData } = await supabase
             .from('appointments')
             .select('queue_number')
