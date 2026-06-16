@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
-import { Users, Calendar, Clock, Activity, ArrowLeft, LogOut } from 'lucide-react'
+import { Users, Calendar, Clock, Activity, LogOut, Sparkles, Heart, Baby, Stethoscope } from 'lucide-react'
+
+// ... باقي الكود مع تحسين التصميم
 
 interface Stats {
     totalPatients: number
