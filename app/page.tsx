@@ -2,33 +2,28 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 
 export default function HomePage() {
     const router = useRouter()
 
     useEffect(() => {
-        const checkAuth = async () => {
-            const { data: { session } } = await supabase.auth.getSession()
-            
-            if (session) {
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('role')
-                    .eq('id', session.user.id)
-                    .single()
-
-                if (profile?.role === 'doctor') {
+        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
+        const userData = localStorage.getItem('user')
+        
+        if (isLoggedIn && userData) {
+            try {
+                const user = JSON.parse(userData)
+                if (user.role === 'doctor') {
                     router.push('/doctor')
                 } else {
                     router.push('/assistant')
                 }
-            } else {
+            } catch {
                 router.push('/login')
             }
+        } else {
+            router.push('/login')
         }
-
-        checkAuth()
     }, [router])
 
     return (
