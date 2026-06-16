@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
@@ -16,36 +15,32 @@ export default function LoginPage() {
         setLoading(true)
         setError('')
 
-        console.log('🔐 محاولة تسجيل الدخول...')
+        try {
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            })
 
-        const { data, error: authError } = await supabase.auth.signInWithPassword({
-            email,
-            password
-        })
+            const data = await res.json()
 
-        console.log('📊 نتيجة Supabase:', { data, authError })
+            if (!res.ok) {
+                setError(data.error || 'فشل تسجيل الدخول')
+                setLoading(false)
+                return
+            }
 
-        if (authError) {
-            console.log('❌ خطأ:', authError.message)
-            setError(authError.message)
-            setLoading(false)
-            return
-        }
+            // حفظ بيانات المستخدم
+            localStorage.setItem('user', JSON.stringify(data.user))
+            localStorage.setItem('isLoggedIn', 'true')
 
-        console.log('✅ تم تسجيل الدخول بنجاح')
-
-        const { data: profile, error: profileError } = await supabase
-            .from('clinic_profiles')
-            .select('role')
-            .eq('id', data.user.id)
-            .single()
-
-        console.log('📋 البروفايل:', { profile, profileError })
-
-        if (profile?.role === 'doctor') {
-            router.push('/doctor')
-        } else {
-            router.push('/assistant')
+            if (data.user.role === 'doctor') {
+                router.push('/doctor')
+            } else {
+                router.push('/assistant')
+            }
+        } catch {
+            setError('حدث خطأ في الاتصال بالخادم')
         }
         setLoading(false)
     }
