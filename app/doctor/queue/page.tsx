@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import { Clock, User, Phone, RefreshCw, CheckCircle, XCircle, UserCheck, ChevronLeft } from 'lucide-react'
 
-// ✅ تعريف الـ Interface
+// ✅ تعريف الـ Interface بشكل صحيح
 interface QueueItem {
     id: string
     patient_id: string
@@ -41,7 +41,7 @@ export default function DoctorQueuePage() {
         fetchQueue()
     }, [user, loading, router])
 
-    // ✅ دالة جلب البيانات - تم تعديلها
+    // ✅ دالة جلب البيانات - تم تعديلها بالكامل
     const fetchQueue = async () => {
         setLoadingQueue(true)
         const todayStr = new Date().toISOString().split('T')[0]
