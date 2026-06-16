@@ -8,11 +8,11 @@ const supabase = createClient(
 
 export async function POST(request: Request) {
     try {
-        const { username, password } = await request.json()
+        const { identifier, password } = await request.json()
 
-        if (!username || !password) {
+        if (!identifier || !password) {
             return NextResponse.json(
-                { error: 'اسم المستخدم وكلمة المرور مطلوبين' },
+                { error: 'اسم المستخدم/البريد الإلكتروني وكلمة المرور مطلوبين' },
                 { status: 400 }
             )
         }
@@ -21,14 +21,14 @@ export async function POST(request: Request) {
         const { data: userData, error } = await supabase.rpc(
             'verify_user',
             {
-                p_username: username,
+                p_identifier: identifier,
                 p_password: password
             }
         )
 
         if (error || !userData || userData.length === 0) {
             return NextResponse.json(
-                { error: 'اسم المستخدم أو كلمة المرور غير صحيحة' },
+                { error: 'بيانات الدخول غير صحيحة' },
                 { status: 401 }
             )
         }
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
                 full_name: user.full_name,
                 role: user.user_role,
                 email: user.user_email,
-                username: username
+                username: user.user_username
             }
         })
 
