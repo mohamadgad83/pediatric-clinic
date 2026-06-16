@@ -13,17 +13,46 @@
     text-align: right;
 }
 
+/* 🎈 Animations */
+@keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+.animate-spin-slow {
+    animation: spin-slow 20s linear infinite;
+}
+
+@keyframes bounce-delay {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+.delay-100 {
+    animation-delay: 0.5s;
+}
+.delay-75 {
+    animation-delay: 0.3s;
+}
+
+/* 🎨 Scrollbar */
 ::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
 }
 ::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: #f1f5f9;
     border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb {
-    background: #888;
+    background: linear-gradient(180deg, #38BDF8, #F472B6);
     border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: #555;
+    background: linear-gradient(180deg, #0EA5E9, #EC4899);
+}
+
+/* 🎯 Glass effect */
+.glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
 }
