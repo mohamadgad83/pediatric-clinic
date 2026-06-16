@@ -110,6 +110,28 @@
             height: 18px;
             accent-color: #2563eb;
         }
+        #fileTree {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f8fafc;
+            border-radius: 12px;
+            text-align: right;
+            font-size: 0.8rem;
+            color: #475569;
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            display: none;
+        }
+        #fileTree span {
+            display: inline-block;
+            background: #e2e8f0;
+            padding: 0.1rem 0.5rem;
+            border-radius: 4px;
+            margin: 0.1rem;
+            font-family: monospace;
+            font-size: 0.7rem;
+        }
     </style>
 </head>
 <body>
@@ -134,6 +156,8 @@
 
         <div class="status" id="status">⏳ جاهز للتصدير</div>
 
+        <div id="fileTree"></div>
+
         <div class="footer">
             <span class="badge">🔧 Next.js + Supabase</span>
             <span class="badge">🩺 عيادة أطفال</span>
@@ -143,7 +167,7 @@
 
     <script>
         // ============================================================
-        // 📄 محتوى التوثيق الكامل (documentation.html)
+        // 📄 محتوى التوثيق الكامل
         // ============================================================
         const DOCUMENTATION_CONTENT = `
         ========================================
@@ -339,6 +363,33 @@
         `;
 
         // ============================================================
+        // قائمة الملفات (هتتجمع من الصفحة نفسها)
+        // ============================================================
+        const FILES_TO_EXPORT = [
+            { path: 'app/api/login/route.ts' },
+            { path: 'app/assistant/page.tsx' },
+            { path: 'app/assistant/patients/page.tsx' },
+            { path: 'app/assistant/patients/new/page.tsx' },
+            { path: 'app/assistant/queue/page.tsx' },
+            { path: 'app/doctor/page.tsx' },
+            { path: 'app/doctor/patients/page.tsx' },
+            { path: 'app/doctor/patients/[id]/page.tsx' },
+            { path: 'app/doctor/queue/page.tsx' },
+            { path: 'app/login/page.tsx' },
+            { path: 'app/layout.tsx' },
+            { path: 'app/page.tsx' },
+            { path: 'app/globals.css' },
+            { path: 'hooks/useAuth.ts' },
+            { path: 'lib/supabase.ts' },
+            { path: 'middleware.ts' },
+            { path: 'package.json' },
+            { path: 'next.config.js' },
+            { path: 'tailwind.config.js' },
+            { path: 'postcss.config.js' },
+            { path: 'tsconfig.json' }
+        ];
+
+        // ============================================================
         // 🚀 زر التصدير
         // ============================================================
         document.getElementById('exportBtn').addEventListener('click', async function() {
@@ -354,72 +405,54 @@
 
             let fullContent = '';
             let fileCount = 0;
+            let missingCount = 0;
 
             try {
-                // 1. قائمة الملفات المهمة
-                const fileList = [
-                    'app/api/login/route.ts',
-                    'app/assistant/page.tsx',
-                    'app/assistant/patients/page.tsx',
-                    'app/assistant/patients/new/page.tsx',
-                    'app/assistant/queue/page.tsx',
-                    'app/doctor/page.tsx',
-                    'app/doctor/patients/page.tsx',
-                    'app/doctor/patients/[id]/page.tsx',
-                    'app/doctor/queue/page.tsx',
-                    'app/login/page.tsx',
-                    'app/layout.tsx',
-                    'app/page.tsx',
-                    'app/globals.css',
-                    'hooks/useAuth.ts',
-                    'lib/supabase.ts',
-                    'middleware.ts',
-                    'package.json',
-                    'next.config.js',
-                    'tailwind.config.js',
-                    'postcss.config.js',
-                    'tsconfig.json'
-                ];
-
-                // 2. عنوان الملف
+                // 1. عنوان الملف
                 fullContent += '# 📦 PediaCare - Full Project Code + Documentation\n\n';
                 fullContent += `Generated on: ${new Date().toLocaleString('ar-EG')}\n`;
-                fullContent += '=' . repeat(60) + '\n\n';
+                fullContent += '============================================================\n\n';
 
-                // 3. تصدير الأكواد
+                // 2. تصدير الأكواد
                 if (includeCode) {
                     fullContent += '# 💻 Project Code\n\n';
-                    for (const file of fileList) {
-                        status.textContent = `⏳ جاري تحميل: ${file}`;
+                    
+                    // ⭐ الطريقة الجديدة: نجيب الملفات من GitHub مباشرة
+                    const baseURL = 'https://raw.githubusercontent.com/mohamadgad83/pediatric-clinic/main/';
+                    
+                    for (const file of FILES_TO_EXPORT) {
+                        status.textContent = `⏳ جاري تحميل: ${file.path}`;
                         try {
-                            const res = await fetch(`/${file}`);
+                            const res = await fetch(baseURL + file.path);
                             if (res.ok) {
                                 const content = await res.text();
-                                fullContent += `📁 FILE: ${file}\n`;
-                                fullContent += '=' . repeat(60) + '\n';
+                                fullContent += `📁 FILE: ${file.path}\n`;
+                                fullContent += '============================================================\n';
                                 fullContent += content;
-                                fullContent += '\n\n' + '=' . repeat(60) + '\n\n';
+                                fullContent += '\n\n============================================================\n\n';
                                 fileCount++;
                             } else {
-                                fullContent += `📁 FILE: ${file} (⚠️ غير موجود)\n`;
-                                fullContent += '=' . repeat(60) + '\n';
+                                fullContent += `📁 FILE: ${file.path} (⚠️ غير موجود)\n`;
+                                fullContent += '============================================================\n';
                                 fullContent += '❌ الملف غير موجود\n\n';
+                                missingCount++;
                             }
                         } catch (e) {
-                            fullContent += `📁 FILE: ${file} (⚠️ خطأ)\n`;
-                            fullContent += '=' . repeat(60) + '\n';
+                            fullContent += `📁 FILE: ${file.path} (⚠️ خطأ)\n`;
+                            fullContent += '============================================================\n';
                             fullContent += `❌ خطأ: ${e.message}\n\n`;
+                            missingCount++;
                         }
                     }
                 }
 
-                // 4. إضافة التوثيق
+                // 3. إضافة التوثيق
                 if (includeDocs) {
                     fullContent += '\n\n';
                     fullContent += DOCUMENTATION_CONTENT;
                 }
 
-                // 5. إنشاء ملف للتحميل
+                // 4. إنشاء ملف للتحميل
                 const blob = new Blob([fullContent], { type: 'text/plain;charset=utf-8' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -430,7 +463,10 @@
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
 
-                status.textContent = `✅ تم التصدير بنجاح! (${fileCount} ملف، ${Math.round(blob.size / 1024)} KB)`;
+                let msg = `✅ تم التصدير بنجاح! (${fileCount} ملف`;
+                if (missingCount > 0) msg += `، ${missingCount} ملف غير موجود`;
+                msg += `، ${Math.round(blob.size / 1024)} KB)`;
+                status.textContent = msg;
                 status.className = 'status done';
                 btn.textContent = '✅ تم!';
 
