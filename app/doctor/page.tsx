@@ -33,25 +33,25 @@ export default function DoctorDashboard() {
         const fetchStats = async () => {
             // عدد المرضى الكلي
             const { count: patientsCount } = await supabase
-                .from('patients')
+                .from('clinic_patients')
                 .select('*', { count: 'exact', head: true })
 
             // مواعيد اليوم
             const today = new Date().toISOString().split('T')[0]
             const { count: todayCount } = await supabase
-                .from('appointments')
+                .from('clinic_appointments')
                 .select('*', { count: 'exact', head: true })
                 .eq('appointment_date', today)
 
             // قائمة الانتظار
             const { count: waitingCount } = await supabase
-                .from('appointments')
+                .from('clinic_appointments')
                 .select('*', { count: 'exact', head: true })
                 .eq('status', 'waiting')
 
             // أحدث المرضى
             const { data: recent } = await supabase
-                .from('patients')
+                .from('clinic_patients')
                 .select('*')
                 .order('created_at', { ascending: false })
                 .limit(5)

@@ -47,7 +47,7 @@ export default function DoctorQueuePage() {
         const todayStr = new Date().toISOString().split('T')[0]
         
         const { data, error } = await supabase
-            .from('appointments')
+            .from('clinic_appointments')
             .select(`
                 id,
                 patient_id,
@@ -56,7 +56,7 @@ export default function DoctorQueuePage() {
                 appointment_date,
                 vital_signs,
                 notes,
-                patients (
+                clinic_patients (
                     name,
                     parent_name,
                     parent_phone
@@ -86,7 +86,7 @@ export default function DoctorQueuePage() {
 
     const updateStatus = async (id: string, status: 'in_clinic' | 'done' | 'cancelled') => {
         const { error } = await supabase
-            .from('appointments')
+            .from('clinic_appointments')
             .update({ status })
             .eq('id', id)
 

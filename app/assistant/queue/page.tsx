@@ -59,7 +59,7 @@ export default function AssistantQueuePage() {
         const todayStr = new Date().toISOString().split('T')[0]
         
         const { data, error } = await supabase
-            .from('appointments')
+            .from('clinic_appointments')
             .select(`
                 id,
                 patient_id,
@@ -68,7 +68,7 @@ export default function AssistantQueuePage() {
                 appointment_date,
                 vital_signs,
                 notes,
-                patients (
+                clinic_patients (
                     name,
                     parent_name,
                     parent_phone
@@ -98,7 +98,7 @@ export default function AssistantQueuePage() {
 
     const fetchPatients = async () => {
         const { data } = await supabase
-            .from('patients')
+            .from('clinic_patients')
             .select('id, name')
             .order('name')
         setPatients(data || [])
@@ -111,7 +111,7 @@ export default function AssistantQueuePage() {
         setAddingToQueue(true)
 
         const { data: queueData } = await supabase
-            .from('appointments')
+            .from('clinic_appointments')
             .select('queue_number')
             .eq('appointment_date', today)
             .order('queue_number', { ascending: false })
@@ -126,7 +126,7 @@ export default function AssistantQueuePage() {
         if (vitalSigns.blood_pressure) vitalSignsObj.blood_pressure = vitalSigns.blood_pressure
 
         const { error } = await supabase
-            .from('appointments')
+            .from('clinic_appointments')
             .insert({
                 patient_id: selectedPatient,
                 appointment_date: today,

@@ -30,22 +30,22 @@ export default function AssistantDashboard() {
 
         const fetchStats = async () => {
             const { count: patientsCount } = await supabase
-                .from('patients')
+                .from('clinic_patients')
                 .select('*', { count: 'exact', head: true })
 
             const today = new Date().toISOString().split('T')[0]
             const { count: todayCount } = await supabase
-                .from('appointments')
+                .from('clinic_appointments')
                 .select('*', { count: 'exact', head: true })
                 .eq('appointment_date', today)
 
             const { count: waitingCount } = await supabase
-                .from('appointments')
+                .from('clinic_appointments')
                 .select('*', { count: 'exact', head: true })
                 .eq('status', 'waiting')
 
             const { data: recent } = await supabase
-                .from('patients')
+                .from('clinic_patients')
                 .select('*')
                 .order('created_at', { ascending: false })
                 .limit(5)

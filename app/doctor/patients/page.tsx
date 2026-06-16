@@ -31,7 +31,7 @@ export default function PatientsList() {
 
         const fetchPatients = async () => {
             const { data, error } = await supabase
-                .from('patients')
+                .from('clinic_patients')
                 .select('*')
                 .order('created_at', { ascending: false })
 

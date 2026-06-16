@@ -43,7 +43,7 @@ export default function NewPatientPage() {
         })
 
         const { error: insertError } = await supabase
-            .from('patients')
+            .from('clinic_patients')
             .insert({
                 name: formData.name,
                 birth_date: formData.birth_date,

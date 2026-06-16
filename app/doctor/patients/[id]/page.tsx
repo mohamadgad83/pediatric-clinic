@@ -65,7 +65,7 @@ export default function PatientPage() {
         const fetchPatient = async () => {
             // جلب بيانات المريض
             const { data: patientData, error: patientError } = await supabase
-                .from('patients')
+                .from('clinic_patients')
                 .select('*')
                 .eq('id', patientId)
                 .single()
@@ -79,7 +79,7 @@ export default function PatientPage() {
 
             // جلب السجلات الطبية
             const { data: recordsData } = await supabase
-                .from('medical_records')
+                .from('clinic_medical_records')
                 .select('*')
                 .eq('patient_id', patientId)
                 .order('created_at', { ascending: false })
@@ -88,7 +88,7 @@ export default function PatientPage() {
 
             // جلب المواعيد
             const { data: appointmentsData } = await supabase
-                .from('appointments')
+                .from('clinic_appointments')
                 .select('*')
                 .eq('patient_id', patientId)
                 .order('created_at', { ascending: false })
@@ -399,7 +399,7 @@ export default function PatientPage() {
                             const prescription = medication ? [{ name: medication, dosage: dosage || '' }] : []
 
                             const { error } = await supabase
-                                .from('medical_records')
+                                .from('clinic_medical_records')
                                 .insert({
                                     patient_id: patientId,
                                     diagnosis,
@@ -412,7 +412,7 @@ export default function PatientPage() {
                                 setShowAddRecord(false)
                                 // إعادة تحميل البيانات
                                 const { data: recordsData } = await supabase
-                                    .from('medical_records')
+                                    .from('clinic_medical_records')
                                     .select('*')
                                     .eq('patient_id', patientId)
                                     .order('created_at', { ascending: false })
