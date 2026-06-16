@@ -1,0 +1,2995 @@
+========================================
+📁 FILE: ./vercel.json
+========================================
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/next"
+    }
+  ]
+}
+
+
+========================================
+📁 FILE: ./hooks/useAuth.ts
+========================================
+'use client'
+
+import { useEffect, useState } from 'react'
+
+export function useAuth() {
+    const [user, setUser] = useState<any>(null)
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        const userData = localStorage.getItem('user')
+        if (userData) {
+            try {
+                setUser(JSON.parse(userData))
+            } catch {
+                localStorage.removeItem('user')
+            }
+        }
+        setLoading(false)
+    }, [])
+
+    const logout = () => {
+        localStorage.removeItem('user')
+        localStorage.removeItem('isLoggedIn')
+        window.location.href = '/login'
+    }
+
+    return { user, loading, logout }
+}
+
+
+========================================
+📁 FILE: ./postcss.config.js
+========================================
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+
+
+========================================
+📁 FILE: ./package.json
+========================================
+{
+  "name": "pediatric-clinic",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@supabase/auth-helpers-nextjs": "^0.10.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "date-fns": "^3.6.0",
+    "lucide-react": "^0.344.0",
+    "next": "14.2.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.19",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "14.2.5",
+    "postcss": "^8.4.39",
+    "tailwindcss": "^3.4.6",
+    "typescript": "^5.5.3"
+  }
+}
+
+
+========================================
+📁 FILE: ./middleware.ts
+========================================
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+
+export function middleware(req: NextRequest) {
+    const path = req.nextUrl.pathname
+
+    const isLoggedIn = req.cookies.get('isLoggedIn')?.value === 'true'
+    
+    const publicPaths = ['/login', '/api/login']
+    const isPublic = publicPaths.some(p => path === p || path.startsWith('/api/'))
+
+    const protectedPaths = ['/doctor', '/assistant']
+    const isProtected = protectedPaths.some(p => path === p || path.startsWith(p + '/'))
+
+    if (!isLoggedIn && isProtected) {
+        return NextResponse.redirect(new URL('/login', req.url))
+    }
+
+    if (isLoggedIn && path === '/login') {
+        const role = req.cookies.get('userRole')?.value || 'assistant'
+        if (role === 'doctor') {
+            return NextResponse.redirect(new URL('/doctor', req.url))
+        }
+        return NextResponse.redirect(new URL('/assistant', req.url))
+    }
+
+    if (isLoggedIn && isProtected) {
+        const role = req.cookies.get('userRole')?.value || 'assistant'
+
+        if (path.startsWith('/doctor') && role === 'assistant') {
+            return NextResponse.redirect(new URL('/assistant', req.url))
+        }
+
+        if (path.startsWith('/assistant') && role === 'doctor') {
+            return NextResponse.redirect(new URL('/doctor', req.url))
+        }
+    }
+
+    return NextResponse.next()
+}
+
+export const config = {
+    matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)']
+}
+
+
+========================================
+📁 FILE: ./tailwind.config.js
+========================================
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+
+export function middleware(req: NextRequest) {
+    const path = req.nextUrl.pathname
+
+    // التحقق من وجود مستخدم
+    const isLoggedIn = req.cookies.get('isLoggedIn')?.value === 'true'
+    
+    console.log('🔐 Middleware:', { path, isLoggedIn })
+
+    // المسارات العامة
+    const publicPaths = ['/login', '/api/login']
+    const isPublic = publicPaths.some(p => path === p || path.startsWith('/api/'))
+
+    // المسارات المحمية
+    const protectedPaths = ['/doctor', '/assistant']
+    const isProtected = protectedPaths.some(p => path === p || path.startsWith(p + '/'))
+
+    // لو مش مسجل ويحاول يدخل على صفحة محمية
+    if (!isLoggedIn && isProtected) {
+        return NextResponse.redirect(new URL('/login', req.url))
+    }
+
+    // لو مسجل وجاي على login
+    if (isLoggedIn && path === '/login') {
+        const role = req.cookies.get('userRole')?.value || 'assistant'
+        if (role === 'doctor') {
+            return NextResponse.redirect(new URL('/doctor', req.url))
+        }
+        return NextResponse.redirect(new URL('/assistant', req.url))
+    }
+
+    // التحقق من الصلاحيات
+    if (isLoggedIn && isProtected) {
+        const role = req.cookies.get('userRole')?.value || 'assistant'
+
+        if (path.startsWith('/doctor') && role === 'assistant') {
+            return NextResponse.redirect(new URL('/assistant', req.url))
+        }
+
+        if (path.startsWith('/assistant') && role === 'doctor') {
+            return NextResponse.redirect(new URL('/doctor', req.url))
+        }
+    }
+
+    return NextResponse.next()
+}
+
+export const config = {
+    matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)']
+}
+
+
+========================================
+📁 FILE: ./next.config.js
+========================================
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  images: {
+    domains: ['cuchwughgvhiwgaoodib.supabase.co'],
+  },
+}
+
+module.exports = nextConfig
+
+
+========================================
+📁 FILE: ./lib/supabase.ts
+========================================
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+export type Database = {
+    public: {
+        Tables: {
+            clinic_profiles: {
+                Row: {
+                    id: string
+                    full_name: string
+                    role: 'doctor' | 'assistant'
+                    phone: string | null
+                    avatar_url: string | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id: string
+                    full_name: string
+                    role: 'doctor' | 'assistant'
+                    phone?: string | null
+                    avatar_url?: string | null
+                }
+                Update: {
+                    full_name?: string
+                    role?: 'doctor' | 'assistant'
+                    phone?: string | null
+                    avatar_url?: string | null
+                }
+            }
+            clinic_patients: {
+                Row: {
+                    id: string
+                    name: string
+                    birth_date: string
+                    gender: 'male' | 'female' | null
+                    parent_name: string
+                    parent_phone: string
+                    parent_email: string | null
+                    address: string | null
+                    custom_fields: any
+                    created_by: string | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    name: string
+                    birth_date: string
+                    gender?: 'male' | 'female' | null
+                    parent_name: string
+                    parent_phone: string
+                    parent_email?: string | null
+                    address?: string | null
+                    custom_fields?: any
+                    created_by?: string | null
+                }
+                Update: {
+                    name?: string
+                    birth_date?: string
+                    gender?: 'male' | 'female' | null
+                    parent_name?: string
+                    parent_phone?: string
+                    parent_email?: string | null
+                    address?: string | null
+                    custom_fields?: any
+                }
+            }
+            clinic_appointments: {
+                Row: {
+                    id: string
+                    patient_id: string
+                    appointment_date: string
+                    appointment_time: string | null
+                    queue_number: number
+                    status: 'waiting' | 'in_clinic' | 'done' | 'cancelled'
+                    vital_signs: any
+                    chief_complaint: string | null
+                    notes: string | null
+                    created_by: string | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    patient_id: string
+                    appointment_date: string
+                    appointment_time?: string | null
+                    queue_number: number
+                    status?: 'waiting' | 'in_clinic' | 'done' | 'cancelled'
+                    vital_signs?: any
+                    chief_complaint?: string | null
+                    notes?: string | null
+                    created_by?: string | null
+                }
+                Update: {
+                    patient_id?: string
+                    appointment_date?: string
+                    appointment_time?: string | null
+                    queue_number?: number
+                    status?: 'waiting' | 'in_clinic' | 'done' | 'cancelled'
+                    vital_signs?: any
+                    chief_complaint?: string | null
+                    notes?: string | null
+                }
+            }
+            clinic_medical_records: {
+                Row: {
+                    id: string
+                    patient_id: string
+                    appointment_id: string | null
+                    diagnosis: string
+                    prescription: any
+                    notes: string | null
+                    attachments: string[] | null
+                    created_by: string | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    patient_id: string
+                    appointment_id?: string | null
+                    diagnosis: string
+                    prescription?: any
+                    notes?: string | null
+                    attachments?: string[] | null
+                    created_by?: string | null
+                }
+                Update: {
+                    patient_id?: string
+                    appointment_id?: string | null
+                    diagnosis?: string
+                    prescription?: any
+                    notes?: string | null
+                    attachments?: string[] | null
+                }
+            }
+        }
+    }
+}
+
+
+========================================
+📁 FILE: ./tsconfig.json
+========================================
+{
+  "compilerOptions": {
+    "target": "es5",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}
+
+
+========================================
+📁 FILE: ./app/doctor/patients/page.tsx
+========================================
+'use client'
+
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
+import { useRouter } from 'next/navigation'
+import { Search, UserPlus, ArrowRight, Calendar, Phone, User } from 'lucide-react'
+
+interface Patient {
+    id: string
+    name: string
+    birth_date: string
+    parent_name: string
+    parent_phone: string
+    created_at: string
+}
+
+export default function PatientsList() {
+    const { user, loading } = useAuth()
+    const router = useRouter()
+    const [patients, setPatients] = useState<Patient[]>([])
+    const [filteredPatients, setFilteredPatients] = useState<Patient[]>([])
+    const [searchTerm, setSearchTerm] = useState('')
+    const [loadingPatients, setLoadingPatients] = useState(true)
+
+    useEffect(() => {
+        if (!loading && !user) {
+            router.push('/login')
+            return
+        }
+
+        const fetchPatients = async () => {
+            const { data, error } = await supabase
+                .from('patients')
+                .select('*')
+                .order('created_at', { ascending: false })
+
+            if (!error && data) {
+                setPatients(data)
+                setFilteredPatients(data)
+            }
+            setLoadingPatients(false)
+        }
+
+        fetchPatients()
+    }, [user, loading, router])
+
+    useEffect(() => {
+        if (searchTerm.trim() === '') {
+            setFilteredPatients(patients)
+        } else {
+            const term = searchTerm.toLowerCase()
+            setFilteredPatients(
+                patients.filter(p =>
+                    p.name.toLowerCase().includes(term) ||
+                    p.parent_name.toLowerCase().includes(term) ||
+                    p.parent_phone.includes(term)
+                )
+            )
+        }
+    }, [searchTerm, patients])
+
+    const calculateAge = (birthDate: string) => {
+        const today = new Date()
+        const birth = new Date(birthDate)
+        let years = today.getFullYear() - birth.getFullYear()
+        let months = today.getMonth() - birth.getMonth()
+        if (months < 0) {
+            years--
+            months += 12
+        }
+        if (years === 0) return `${months} شهر`
+        return `${years} سنة و ${months} شهر`
+    }
+
+    if (loading || loadingPatients) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <div className="text-4xl mb-4">🔄</div>
+                    <p className="text-gray-500">جاري التحميل...</p>
+                </div>
+            </div>
+        )
+    }
+
+    return (
+        <div className="min-h-screen bg-gray-50">
+            {/* Header */}
+            <header className="bg-white shadow-sm border-b">
+                <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => router.push('/doctor')}
+                            className="text-gray-600 hover:text-gray-800"
+                        >
+                            ←
+                        </button>
+                        <h1 className="text-2xl font-bold text-gray-800">👶 قائمة المرضى</h1>
+                    </div>
+                    <button
+                        onClick={() => router.push('/assistant/patients/new')}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    >
+                        <UserPlus className="w-4 h-4" />
+                        مريض جديد
+                    </button>
+                </div>
+            </header>
+
+            <div className="max-w-7xl mx-auto p-6">
+                {/* Search */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
+                    <div className="relative">
+                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                        <input
+                            type="text"
+                            placeholder="بحث بالاسم، اسم ولي الأمر، أو رقم الهاتف..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pr-10 pl-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                        />
+                    </div>
+                </div>
+
+                {/* Patients Grid */}
+                {filteredPatients.length === 0 ? (
+                    <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-100">
+                        <div className="text-6xl mb-4">👶</div>
+                        <h3 className="text-xl font-semibold text-gray-700">لا يوجد مرضى</h3>
+                        <p className="text-gray-400 mt-1">
+                            {searchTerm ? 'لا توجد نتائج مطابقة للبحث' : 'ابدأ بإضافة أول مريض'}
+                        </p>
+                        {!searchTerm && (
+                            <button
+                                onClick={() => router.push('/assistant/patients/new')}
+                                className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                            >
+                                إضافة مريض جديد
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {filteredPatients.map((patient) => (
+                            <div
+                                key={patient.id}
+                                className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition cursor-pointer"
+                                onClick={() => router.push(`/doctor/patients/${patient.id}`)}
+                            >
+                                <div className="flex justify-between items-start mb-3">
+                                    <div>
+                                        <h3 className="text-lg font-semibold">{patient.name}</h3>
+                                        <p className="text-sm text-gray-500">
+                                            <Calendar className="w-3 h-3 inline ml-1" />
+                                            {calculateAge(patient.birth_date)}
+                                        </p>
+                                    </div>
+                                    <ArrowRight className="w-5 h-5 text-gray-400" />
+                                </div>
+                                <div className="space-y-2 text-sm">
+                                    <p className="text-gray-600">
+                                        <User className="w-3 h-3 inline ml-1" />
+                                        ولي الأمر: {patient.parent_name}
+                                    </p>
+                                    <p className="text-gray-600">
+                                        <Phone className="w-3 h-3 inline ml-1" />
+                                        {patient.parent_phone}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    )
+}
+
+
+========================================
+📁 FILE: ./app/doctor/patients/[id]/page.tsx
+========================================
+'use client'
+
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
+import { useRouter, useParams } from 'next/navigation'
+import { 
+    ArrowRight, Calendar, Phone, User, 
+    Stethoscope, FileText, Pill, Activity,
+    Plus, Edit, Clock, ChevronLeft
+} from 'lucide-react'
+
+interface Patient {
+    id: string
+    name: string
+    birth_date: string
+    gender: string
+    parent_name: string
+    parent_phone: string
+    parent_email: string
+    address: string
+    custom_fields: any
+    created_at: string
+}
+
+interface MedicalRecord {
+    id: string
+    diagnosis: string
+    prescription: any
+    notes: string
+    created_at: string
+    appointment_id: string
+}
+
+interface Appointment {
+    id: string
+    appointment_date: string
+    appointment_time: string
+    queue_number: number
+    status: string
+    vital_signs: any
+    chief_complaint: string
+    created_at: string
+}
+
+export default function PatientPage() {
+    const { user, loading } = useAuth()
+    const router = useRouter()
+    const params = useParams()
+    const patientId = params.id as string
+
+    const [patient, setPatient] = useState<Patient | null>(null)
+    const [records, setRecords] = useState<MedicalRecord[]>([])
+    const [appointments, setAppointments] = useState<Appointment[]>([])
+    const [loadingPatient, setLoadingPatient] = useState(true)
+    const [activeTab, setActiveTab] = useState<'info' | 'records' | 'appointments'>('info')
+    const [showAddRecord, setShowAddRecord] = useState(false)
+
+    useEffect(() => {
+        if (!loading && !user) {
+            router.push('/login')
+            return
+        }
+
+        const fetchPatient = async () => {
+            // جلب بيانات المريض
+            const { data: patientData, error: patientError } = await supabase
+                .from('patients')
+                .select('*')
+                .eq('id', patientId)
+                .single()
+
+            if (patientError) {
+                router.push('/doctor/patients')
+                return
+            }
+
+            setPatient(patientData)
+
+            // جلب السجلات الطبية
+            const { data: recordsData } = await supabase
+                .from('medical_records')
+                .select('*')
+                .eq('patient_id', patientId)
+                .order('created_at', { ascending: false })
+
+            setRecords(recordsData || [])
+
+            // جلب المواعيد
+            const { data: appointmentsData } = await supabase
+                .from('appointments')
+                .select('*')
+                .eq('patient_id', patientId)
+                .order('created_at', { ascending: false })
+
+            setAppointments(appointmentsData || [])
+            setLoadingPatient(false)
+        }
+
+        fetchPatient()
+    }, [user, loading, router, patientId])
+
+    const calculateAge = (birthDate: string) => {
+        const today = new Date()
+        const birth = new Date(birthDate)
+        let years = today.getFullYear() - birth.getFullYear()
+        let months = today.getMonth() - birth.getMonth()
+        if (months < 0) {
+            years--
+            months += 12
+        }
+        if (years === 0) return `${months} شهر`
+        return `${years} سنة و ${months} شهر`
+    }
+
+    const getStatusBadge = (status: string) => {
+        const colors: Record<string, string> = {
+            waiting: 'bg-yellow-100 text-yellow-700',
+            in_clinic: 'bg-green-100 text-green-700',
+            done: 'bg-blue-100 text-blue-700',
+            cancelled: 'bg-red-100 text-red-700'
+        }
+        const labels: Record<string, string> = {
+            waiting: 'في الانتظار',
+            in_clinic: 'في العيادة',
+            done: 'تم الكشف',
+            cancelled: 'ملغي'
+        }
+        return (
+            <span className={`px-3 py-1 rounded-full text-xs ${colors[status] || 'bg-gray-100 text-gray-700'}`}>
+                {labels[status] || status}
+            </span>
+        )
+    }
+
+    if (loading || loadingPatient) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <div className="text-4xl mb-4">🔄</div>
+                    <p className="text-gray-500">جاري التحميل...</p>
+                </div>
+            </div>
+        )
+    }
+
+    if (!patient) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <div className="text-6xl mb-4">😕</div>
+                    <h3 className="text-xl font-semibold">المريض غير موجود</h3>
+                    <button
+                        onClick={() => router.push('/doctor/patients')}
+                        className="mt-4 text-blue-600 hover:text-blue-700"
+                    >
+                        العودة لقائمة المرضى
+                    </button>
+                </div>
+            </div>
+        )
+    }
+
+    return (
+        <div className="min-h-screen bg-gray-50">
+            {/* Header */}
+            <header className="bg-white shadow-sm border-b">
+                <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => router.push('/doctor/patients')}
+                            className="text-gray-600 hover:text-gray-800 flex items-center gap-1"
+                        >
+                            <ChevronLeft className="w-5 h-5" />
+                            رجوع
+                        </button>
+                        <h1 className="text-2xl font-bold text-gray-800">ملف المريض</h1>
+                    </div>
+                    <button
+                        onClick={() => setShowAddRecord(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    >
+                        <Plus className="w-4 h-4" />
+                        إضافة سجل طبي
+                    </button>
+                </div>
+            </header>
+
+            <div className="max-w-7xl mx-auto p-6">
+                {/* Patient Info Card */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-start gap-4">
+                            <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-3xl">
+                                👶
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-bold">{patient.name}</h2>
+                                <div className="flex flex-wrap gap-3 mt-1 text-sm text-gray-600">
+                                    <span className="flex items-center gap-1">
+                                        <Calendar className="w-4 h-4" />
+                                        {calculateAge(patient.birth_date)}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                        <User className="w-4 h-4" />
+                                        {patient.gender === 'male' ? 'ذكر' : patient.gender === 'female' ? 'أنثى' : 'غير محدد'}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                        <Phone className="w-4 h-4" />
+                                        {patient.parent_phone}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="text-sm text-gray-500">
+                            <p>ولي الأمر: {patient.parent_name}</p>
+                            {patient.parent_email && (
+                                <p className="mt-1">البريد الإلكتروني: {patient.parent_email}</p>
+                            )}
+                            {patient.address && (
+                                <p className="mt-1">العنوان: {patient.address}</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Tabs */}
+                <div className="flex gap-2 mb-6">
+                    <button
+                        onClick={() => setActiveTab('info')}
+                        className={`px-6 py-2 rounded-lg transition ${
+                            activeTab === 'info'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-white text-gray-600 hover:bg-gray-50'
+                        }`}
+                    >
+                        <Activity className="w-4 h-4 inline ml-1" />
+                        المعلومات
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('records')}
+                        className={`px-6 py-2 rounded-lg transition ${
+                            activeTab === 'records'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-white text-gray-600 hover:bg-gray-50'
+                        }`}
+                    >
+                        <FileText className="w-4 h-4 inline ml-1" />
+                        السجلات الطبية ({records.length})
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('appointments')}
+                        className={`px-6 py-2 rounded-lg transition ${
+                            activeTab === 'appointments'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-white text-gray-600 hover:bg-gray-50'
+                        }`}
+                    >
+                        <Clock className="w-4 h-4 inline ml-1" />
+                        المواعيد ({appointments.length})
+                    </button>
+                </div>
+
+                {/* Tab Content */}
+                {activeTab === 'info' && (
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <h3 className="text-lg font-semibold mb-4">معلومات إضافية</h3>
+                        {patient.custom_fields && Object.keys(patient.custom_fields).length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {Object.entries(patient.custom_fields).map(([key, value]) => (
+                                    <div key={key} className="bg-gray-50 p-3 rounded-lg">
+                                        <p className="text-sm text-gray-500">{key}</p>
+                                        <p className="font-medium">{String(value)}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-gray-400">لا توجد معلومات إضافية</p>
+                        )}
+                    </div>
+                )}
+
+                {activeTab === 'records' && (
+                    <div className="space-y-4">
+                        {records.length === 0 ? (
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
+                                <div className="text-4xl mb-4">📋</div>
+                                <p className="text-gray-400">لا توجد سجلات طبية لهذا المريض</p>
+                                <button
+                                    onClick={() => setShowAddRecord(true)}
+                                    className="mt-4 text-blue-600 hover:text-blue-700"
+                                >
+                                    إضافة أول سجل طبي
+                                </button>
+                            </div>
+                        ) : (
+                            records.map((record) => (
+                                <div key={record.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <h4 className="font-semibold text-lg">تشخيص: {record.diagnosis}</h4>
+                                        <span className="text-sm text-gray-400">
+                                            {new Date(record.created_at).toLocaleDateString('ar-EG')}
+                                        </span>
+                                    </div>
+                                    {record.prescription && record.prescription.length > 0 && (
+                                        <div className="mb-3">
+                                            <p className="text-sm font-medium text-gray-700">الوصفة الطبية:</p>
+                                            <div className="flex flex-wrap gap-2 mt-1">
+                                                {record.prescription.map((med: any, idx: number) => (
+                                                    <span key={idx} className="bg-green-50 text-green-700 px-3 py-1 rounded-full text-sm">
+                                                        {med.name} {med.dosage && `- ${med.dosage}`}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {record.notes && (
+                                        <p className="text-sm text-gray-600 mt-2">
+                                            <span className="font-medium">ملاحظات:</span> {record.notes}
+                                        </p>
+                                    )}
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
+
+                {activeTab === 'appointments' && (
+                    <div className="space-y-4">
+                        {appointments.length === 0 ? (
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
+                                <div className="text-4xl mb-4">📅</div>
+                                <p className="text-gray-400">لا توجد مواعيد لهذا المريض</p>
+                            </div>
+                        ) : (
+                            appointments.map((appointment) => (
+                                <div key={appointment.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                                    <div className="flex flex-wrap justify-between items-start gap-2">
+                                        <div>
+                                            <p className="font-semibold">
+                                                {new Date(appointment.appointment_date).toLocaleDateString('ar-EG')}
+                                                {appointment.appointment_time && ` - ${appointment.appointment_time}`}
+                                            </p>
+                                            <p className="text-sm text-gray-500">رقم الدور: #{appointment.queue_number}</p>
+                                            {appointment.chief_complaint && (
+                                                <p className="text-sm text-gray-600 mt-1">
+                                                    <span className="font-medium">الشكوى الرئيسية:</span> {appointment.chief_complaint}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {getStatusBadge(appointment.status)}
+                                            {appointment.vital_signs && Object.keys(appointment.vital_signs).length > 0 && (
+                                                <div className="flex gap-2 text-sm">
+                                                    {appointment.vital_signs.temperature && (
+                                                        <span className="bg-red-50 text-red-700 px-2 py-1 rounded">
+                                                            🌡️ {appointment.vital_signs.temperature}°C
+                                                        </span>
+                                                    )}
+                                                    {appointment.vital_signs.weight && (
+                                                        <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded">
+                                                            ⚖️ {appointment.vital_signs.weight}kg
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* Modal إضافة سجل طبي - مبسط */}
+            {showAddRecord && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xl font-bold">إضافة سجل طبي جديد</h3>
+                            <button
+                                onClick={() => setShowAddRecord(false)}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <form onSubmit={async (e) => {
+                            e.preventDefault()
+                            const formData = new FormData(e.target as HTMLFormElement)
+                            const diagnosis = formData.get('diagnosis') as string
+                            const notes = formData.get('notes') as string
+                            const medication = formData.get('medication') as string
+                            const dosage = formData.get('dosage') as string
+
+                            if (!diagnosis) return
+
+                            const prescription = medication ? [{ name: medication, dosage: dosage || '' }] : []
+
+                            const { error } = await supabase
+                                .from('medical_records')
+                                .insert({
+                                    patient_id: patientId,
+                                    diagnosis,
+                                    prescription,
+                                    notes,
+                                    created_by: user?.id
+                                })
+
+                            if (!error) {
+                                setShowAddRecord(false)
+                                // إعادة تحميل البيانات
+                                const { data: recordsData } = await supabase
+                                    .from('medical_records')
+                                    .select('*')
+                                    .eq('patient_id', patientId)
+                                    .order('created_at', { ascending: false })
+                                setRecords(recordsData || [])
+                            }
+                        }}>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        التشخيص *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="diagnosis"
+                                        required
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                        placeholder="مثال: التهاب الحلق"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            الدواء
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="medication"
+                                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                            placeholder="اسم الدواء"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            الجرعة
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="dosage"
+                                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                            placeholder="مثال: 5ml"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        ملاحظات
+                                    </label>
+                                    <textarea
+                                        name="notes"
+                                        rows={3}
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                        placeholder="أي ملاحظات إضافية..."
+                                    />
+                                </div>
+                                <div className="flex gap-3">
+                                    <button
+                                        type="submit"
+                                        className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
+                                    >
+                                        حفظ
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAddRecord(false)}
+                                        className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 transition"
+                                    >
+                                        إلغاء
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
+
+
+========================================
+📁 FILE: ./app/doctor/queue/page.tsx
+========================================
+'use client'
+
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
+import { useRouter } from 'next/navigation'
+import { Clock, User, Phone, RefreshCw, CheckCircle, XCircle, UserCheck, ChevronLeft } from 'lucide-react'
+
+// ✅ تعريف الـ Interface بشكل صحيح
+interface QueueItem {
+    id: string
+    patient_id: string
+    queue_number: number
+    status: 'waiting' | 'in_clinic' | 'done' | 'cancelled'
+    appointment_date: string
+    vital_signs: any
+    notes: string | null
+    patients: {
+        name: string
+        parent_name: string
+        parent_phone: string
+    } | null
+}
+
+export default function DoctorQueuePage() {
+    const { user, loading } = useAuth()
+    const router = useRouter()
+    const [queue, setQueue] = useState<QueueItem[]>([])
+    const [loadingQueue, setLoadingQueue] = useState(true)
+    const [today, setToday] = useState('')
+
+    useEffect(() => {
+        if (!loading && !user) {
+            router.push('/login')
+            return
+        }
+
+        const todayStr = new Date().toISOString().split('T')[0]
+        setToday(todayStr)
+
+        fetchQueue()
+    }, [user, loading, router])
+
+    // ✅ دالة جلب البيانات - تم تعديلها بالكامل
+    const fetchQueue = async () => {
+        setLoadingQueue(true)
+        const todayStr = new Date().toISOString().split('T')[0]
+        
+        const { data, error } = await supabase
+            .from('appointments')
+            .select(`
+                id,
+                patient_id,
+                queue_number,
+                status,
+                appointment_date,
+                vital_signs,
+                notes,
+                patients (
+                    name,
+                    parent_name,
+                    parent_phone
+                )
+            `)
+            .eq('appointment_date', todayStr)
+            .in('status', ['waiting', 'in_clinic'])
+            .order('queue_number', { ascending: true })
+
+        if (!error && data) {
+            // ✅ إعادة تشكيل البيانات - دي أهم خطوة
+            const formattedData: QueueItem[] = data.map((item: any) => ({
+                id: item.id,
+                patient_id: item.patient_id,
+                queue_number: item.queue_number,
+                status: item.status,
+                appointment_date: item.appointment_date,
+                vital_signs: item.vital_signs || {},
+                notes: item.notes || null,
+                patients: item.patients?.[0] || null
+            }))
+            
+            setQueue(formattedData)
+        }
+        setLoadingQueue(false)
+    }
+
+    const updateStatus = async (id: string, status: 'in_clinic' | 'done' | 'cancelled') => {
+        const { error } = await supabase
+            .from('appointments')
+            .update({ status })
+            .eq('id', id)
+
+        if (!error) {
+            fetchQueue()
+        }
+    }
+
+    const getStatusBadge = (status: string) => {
+        const colors: Record<string, string> = {
+            waiting: 'bg-yellow-100 text-yellow-700',
+            in_clinic: 'bg-green-100 text-green-700',
+            done: 'bg-blue-100 text-blue-700',
+            cancelled: 'bg-red-100 text-red-700'
+        }
+        const labels: Record<string, string> = {
+            waiting: 'في الانتظار',
+            in_clinic: 'في العيادة',
+            done: 'تم الكشف',
+            cancelled: 'ملغي'
+        }
+        return (
+            <span className={`px-3 py-1 rounded-full text-xs ${colors[status] || 'bg-gray-100 text-gray-700'}`}>
+                {labels[status] || status}
+            </span>
+        )
+    }
+
+    if (loading || loadingQueue) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <div className="text-4xl mb-4">🔄</div>
+                    <p className="text-gray-500">جاري التحميل...</p>
+                </div>
+            </div>
+        )
+    }
+
+    return (
+        <div className="min-h-screen bg-gray-50">
+            {/* Header */}
+            <header className="bg-white shadow-sm border-b">
+                <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => router.push('/doctor')}
+                            className="text-gray-600 hover:text-gray-800"
+                        >
+                            <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <h1 className="text-2xl font-bold text-gray-800">📋 قائمة الانتظار</h1>
+                    </div>
+                    <button
+                        onClick={fetchQueue}
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+                    >
+                        <RefreshCw className="w-4 h-4" />
+                        تحديث
+                    </button>
+                </div>
+            </header>
+
+            <div className="max-w-4xl mx-auto p-6">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <p className="text-sm text-gray-500">تاريخ اليوم</p>
+                            <p className="font-medium">{today}</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-sm text-gray-500">عدد المنتظرين</p>
+                            <p className="text-2xl font-bold text-yellow-600">{queue.filter(q => q.status === 'waiting').length}</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-sm text-gray-500">في العيادة</p>
+                            <p className="text-2xl font-bold text-green-600">{queue.filter(q => q.status === 'in_clinic').length}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {queue.length === 0 ? (
+                    <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-100">
+                        <div className="text-6xl mb-4">📋</div>
+                        <h3 className="text-xl font-semibold text-gray-700">قائمة الانتظار فارغة</h3>
+                        <p className="text-gray-400 mt-1">لا يوجد مرضى في الانتظار اليوم</p>
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {queue.map((item) => (
+                            <div
+                                key={item.id}
+                                className={`bg-white rounded-xl shadow-sm border p-6 transition ${
+                                    item.status === 'in_clinic' ? 'border-green-300 bg-green-50' : 'border-gray-100'
+                                }`}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xl">
+                                            #{item.queue_number}
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-semibold">{item.patients?.name || 'غير معروف'}</h3>
+                                            <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
+                                                <span className="flex items-center gap-1">
+                                                    <User className="w-3 h-3" />
+                                                    {item.patients?.parent_name || 'غير معروف'}
+                                                </span>
+                                                <span className="flex items-center gap-1">
+                                                    <Phone className="w-3 h-3" />
+                                                    {item.patients?.parent_phone || 'غير معروف'}
+                                                </span>
+                                            </div>
+                                            {item.vital_signs && Object.keys(item.vital_signs).length > 0 && (
+                                                <div className="flex gap-3 mt-2 text-sm">
+                                                    {item.vital_signs.temperature && (
+                                                        <span className="bg-red-50 text-red-700 px-2 py-1 rounded">
+                                                            🌡️ {item.vital_signs.temperature}°C
+                                                        </span>
+                                                    )}
+                                                    {item.vital_signs.weight && (
+                                                        <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded">
+                                                            ⚖️ {item.vital_signs.weight}kg
+                                                        </span>
+                                                    )}
+                                                    {item.vital_signs.heart_rate && (
+                                                        <span className="bg-purple-50 text-purple-700 px-2 py-1 rounded">
+                                                            ❤️ {item.vital_signs.heart_rate}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        {getStatusBadge(item.status)}
+                                        {item.status === 'waiting' && (
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => updateStatus(item.id, 'in_clinic')}
+                                                    className="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
+                                                    title="بدء الكشف"
+                                                >
+                                                    <UserCheck className="w-5 h-5" />
+                                                </button>
+                                                <button
+                                                    onClick={() => updateStatus(item.id, 'cancelled')}
+                                                    className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
+                                                    title="إلغاء"
+                                                >
+                                                    <XCircle className="w-5 h-5" />
+                                                </button>
+                                            </div>
+                                        )}
+                                        {item.status === 'in_clinic' && (
+                                            <button
+                                                onClick={() => updateStatus(item.id, 'done')}
+                                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                                            >
+                                                <CheckCircle className="w-4 h-4" />
+                                                إنهاء الكشف
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    )
+}
+
+
+========================================
+📁 FILE: ./app/doctor/page.tsx
+========================================
+'use client'
+
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
+import { useRouter } from 'next/navigation'
+import { Users, Calendar, Clock, Activity, ArrowLeft, LogOut } from 'lucide-react'
+
+interface Stats {
+    totalPatients: number
+    todayAppointments: number
+    waitingQueue: number
+    criticalAlerts: number
+}
+
+export default function DoctorDashboard() {
+    const { user, loading } = useAuth()
+    const router = useRouter()
+    const [stats, setStats] = useState<Stats>({
+        totalPatients: 0,
+        todayAppointments: 0,
+        waitingQueue: 0,
+        criticalAlerts: 0
+    })
+    const [recentPatients, setRecentPatients] = useState<any[]>([])
+
+    useEffect(() => {
+        if (!loading && !user) {
+            router.push('/login')
+            return
+        }
+
+        const fetchStats = async () => {
+            // عدد المرضى الكلي
+            const { count: patientsCount } = await supabase
+                .from('patients')
+                .select('*', { count: 'exact', head: true })
+
+            // مواعيد اليوم
+            const today = new Date().toISOString().split('T')[0]
+            const { count: todayCount } = await supabase
+                .from('appointments')
+                .select('*', { count: 'exact', head: true })
+                .eq('appointment_date', today)
+
+            // قائمة الانتظار
+            const { count: waitingCount } = await supabase
+                .from('appointments')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'waiting')
+
+            // أحدث المرضى
+            const { data: recent } = await supabase
+                .from('patients')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(5)
+
+            setStats({
+                totalPatients: patientsCount || 0,
+                todayAppointments: todayCount || 0,
+                waitingQueue: waitingCount || 0,
+                criticalAlerts: 0
+            })
+            setRecentPatients(recent || [])
+        }
+
+        fetchStats()
+    }, [user, loading, router])
+
+    const handleLogout = async () => {
+        await supabase.auth.signOut()
+        router.push('/login')
+    }
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <div className="text-4xl mb-4">🔄</div>
+                    <p className="text-gray-500">جاري التحميل...</p>
+                </div>
+            </div>
+        )
+    }
+
+    const statCards = [
+        { title: 'إجمالي المرضى', value: stats.totalPatients, icon: Users, color: 'bg-blue-500' },
+        { title: 'مواعيد اليوم', value: stats.todayAppointments, icon: Calendar, color: 'bg-green-500' },
+        { title: 'قائمة الانتظار', value: stats.waitingQueue, icon: Clock, color: 'bg-yellow-500' },
+        { title: 'تنبيهات حرجة', value: stats.criticalAlerts, icon: Activity, color: 'bg-red-500' },
+    ]
+
+    return (
+        <div className="min-h-screen bg-gray-50">
+            {/* Header */}
+            <header className="bg-white shadow-sm border-b">
+                <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                        <h1 className="text-2xl font-bold text-gray-800">🏥 PediaCare</h1>
+                        <span className="bg-blue-100 text-blue-700 text-xs px-3 py-1 rounded-full">طبيب</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <span className="text-gray-600">{user?.user_metadata?.full_name || 'دكتور'}</span>
+                        <button
+                            onClick={handleLogout}
+                            className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition"
+                        >
+                            <LogOut className="w-4 h-4" />
+                            تسجيل خروج
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <div className="max-w-7xl mx-auto p-6">
+                {/* Welcome */}
+                <div className="mb-8">
+                    <h2 className="text-3xl font-bold text-gray-800">
+                        مرحباً {user?.user_metadata?.full_name || 'دكتور'} 👋
+                    </h2>
+                    <p className="text-gray-500 mt-1">لوحة تحكم عيادة الأطفال</p>
+                </div>
+
+                {/* Stats Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    {statCards.map((stat, index) => (
+                        <div key={index} className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-gray-500 text-sm">{stat.title}</p>
+                                    <p className="text-3xl font-bold mt-1">{stat.value}</p>
+                                </div>
+                                <div className={`${stat.color} p-3 rounded-xl text-white`}>
+                                    <stat.icon className="w-6 h-6" />
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Recent Patients */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-semibold">📋 آخر المرضى المسجلين</h3>
+                        <button
+                            onClick={() => router.push('/doctor/patients')}
+                            className="text-blue-600 hover:text-blue-700 text-sm"
+                        >
+                            عرض الكل →
+                        </button>
+                    </div>
+                    {recentPatients.length === 0 ? (
+                        <p className="text-gray-400 text-center py-8">لا يوجد مرضى مسجلين بعد</p>
+                    ) : (
+                        <div className="divide-y">
+                            {recentPatients.map((patient) => (
+                                <div key={patient.id} className="py-3 flex justify-between items-center">
+                                    <div>
+                                        <p className="font-medium">{patient.name}</p>
+                                        <p className="text-sm text-gray-500">ولي الأمر: {patient.parent_name}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => router.push(`/doctor/patients/${patient.id}`)}
+                                        className="text-blue-600 hover:text-blue-700 text-sm"
+                                    >
+                                        عرض
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Quick Actions */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                    <button
+                        onClick={() => router.push('/doctor/patients')}
+                        className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition text-center"
+                    >
+                        <div className="text-2xl mb-2">👶</div>
+                        <p className="text-sm font-medium">المرضى</p>
+                    </button>
+                    <button
+                        onClick={() => router.push('/doctor/queue')}
+                        className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition text-center"
+                    >
+                        <div className="text-2xl mb-2">📋</div>
+                        <p className="text-sm font-medium">قائمة الانتظار</p>
+                    </button>
+                    <button
+                        onClick={() => router.push('/doctor/appointments')}
+                        className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition text-center"
+                    >
+                        <div className="text-2xl mb-2">📅</div>
+                        <p className="text-sm font-medium">المواعيد</p>
+                    </button>
+                    <button
+                        className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition text-center opacity-50 cursor-not-allowed"
+                    >
+                        <div className="text-2xl mb-2">📊</div>
+                        <p className="text-sm font-medium">تقارير (قريباً)</p>
+                    </button>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+
+========================================
+📁 FILE: ./app/layout.tsx
+========================================
+import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
+import './globals.css'
+
+const inter = Inter({ subsets: ['latin'] })
+
+export const metadata: Metadata = {
+    title: 'PediaCare - إدارة عيادة الأطفال',
+    description: 'نظام إدارة عيادة أطفال متكامل',
+}
+
+export default function RootLayout({
+    children,
+}: {
+    children: React.ReactNode
+}) {
+    return (
+        <html lang="ar" dir="rtl">
+            <body className={inter.className}>
+                {children}
+            </body>
+        </html>
+    )
+}
+
+
+========================================
+📁 FILE: ./app/globals.css
+========================================
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --background: 0 0% 100%;
+        --foreground: 222.2 84% 4.9%;
+    }
+}
+
+[dir="rtl"] {
+    text-align: right;
+}
+
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+
+========================================
+📁 FILE: ./app/api/login/route.ts
+========================================
+import { createClient } from '@supabase/supabase-js'
+import { NextResponse } from 'next/server'
+
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
+export async function POST(request: Request) {
+    try {
+        const { identifier, password } = await request.json()
+
+        if (!identifier || !password) {
+            return NextResponse.json(
+                { error: 'اسم المستخدم/البريد الإلكتروني وكلمة المرور مطلوبين' },
+                { status: 400 }
+            )
+        }
+
+        const { data: user, error: userError } = await supabase
+            .from('clinic_profiles')
+            .select('id, full_name, role, email, username, password_hash')
+            .or(`username.eq.${identifier},email.eq.${identifier}`)
+            .single()
+
+        if (userError || !user) {
+            return NextResponse.json(
+                { error: 'بيانات الدخول غير صحيحة' },
+                { status: 401 }
+            )
+        }
+
+        // التحقق من كلمة المرور
+        const { data: validUser, error: validError } = await supabase
+            .rpc('check_password', {
+                input_password: password,
+                stored_hash: user.password_hash
+            })
+
+        if (validError || !validUser) {
+            return NextResponse.json(
+                { error: 'بيانات الدخول غير صحيحة' },
+                { status: 401 }
+            )
+        }
+
+        // إنشاء Response مع البيانات
+        const response = NextResponse.json({
+            user: {
+                id: user.id,
+                full_name: user.full_name,
+                role: user.role,
+                email: user.email,
+                username: user.username
+            }
+        })
+
+        // ✅ إضافة Cookies
+        response.cookies.set('isLoggedIn', 'true', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/',
+            maxAge: 60 * 60 * 24 * 7 // 7 أيام
+        })
+
+        response.cookies.set('userRole', user.role, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/',
+            maxAge: 60 * 60 * 24 * 7
+        })
+
+        response.cookies.set('userId', user.id, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/',
+            maxAge: 60 * 60 * 24 * 7
+        })
+
+        return response
+
+    } catch (error) {
+        console.error('❌ خطأ في الخادم:', error)
+        return NextResponse.json(
+            { error: 'حدث خطأ في الخادم' },
+            { status: 500 }
+        )
+    }
+}
+
+
+========================================
+📁 FILE: ./app/assistant/patients/page.tsx
+========================================
+'use client'
+
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
+import { useRouter } from 'next/navigation'
+import { Search, UserPlus, ArrowRight, Calendar, Phone, User, ChevronLeft } from 'lucide-react'
+
+interface Patient {
+    id: string
+    name: string
+    birth_date: string
+    parent_name: string
+    parent_phone: string
+    created_at: string
+}
+
+export default function AssistantPatientsList() {
+    const { user, loading } = useAuth()
+    const router = useRouter()
+    const [patients, setPatients] = useState<Patient[]>([])
+    const [filteredPatients, setFilteredPatients] = useState<Patient[]>([])
+    const [searchTerm, setSearchTerm] = useState('')
+    const [loadingPatients, setLoadingPatients] = useState(true)
+
+    useEffect(() => {
+        if (!loading && !user) {
+            router.push('/login')
+            return
+        }
+
+        const fetchPatients = async () => {
+            const { data, error } = await supabase
+                .from('patients')
+                .select('*')
+                .order('created_at', { ascending: false })
+
+            if (!error && data) {
+                setPatients(data)
+                setFilteredPatients(data)
+            }
+            setLoadingPatients(false)
+        }
+
+        fetchPatients()
+    }, [user, loading, router])
+
+    useEffect(() => {
+        if (searchTerm.trim() === '') {
+            setFilteredPatients(patients)
+        } else {
+            const term = searchTerm.toLowerCase()
+            setFilteredPatients(
+                patients.filter(p =>
+                    p.name.toLowerCase().includes(term) ||
+                    p.parent_name.toLowerCase().includes(term) ||
+                    p.parent_phone.includes(term)
+                )
+            )
+        }
+    }, [searchTerm, patients])
+
+    const calculateAge = (birthDate: string) => {
+        const today = new Date()
+        const birth = new Date(birthDate)
+        let years = today.getFullYear() - birth.getFullYear()
+        let months = today.getMonth() - birth.getMonth()
+        if (months < 0) {
+            years--
+            months += 12
+        }
+        if (years === 0) return `${months} شهر`
+        return `${years} سنة و ${months} شهر`
+    }
+
+    if (loading || loadingPatients) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <div className="text-4xl mb-4">🔄</div>
+                    <p className="text-gray-500">جاري التحميل...</p>
+                </div>
+            </div>
+        )
+    }
+
+    return (
+        <div className="min-h-screen bg-gray-50">
+            {/* Header */}
+            <header className="bg-white shadow-sm border-b">
+                <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => router.push('/assistant')}
+                            className="text-gray-600 hover:text-gray-800"
+                        >
+                            <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <h1 className="text-2xl font-bold text-gray-800">👶 قائمة المرضى</h1>
+                    </div>
+                    <button
+                        onClick={() => router.push('/assistant/patients/new')}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    >
+                        <UserPlus className="w-4 h-4" />
+                        مريض جديد
+                    </button>
+                </div>
+            </header>
+
+            <div className="max-w-7xl mx-auto p-6">
+                {/* Search */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
+                    <div className="relative">
+                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                        <input
+                            type="text"
+                            placeholder="بحث بالاسم، اسم ولي الأمر، أو رقم الهاتف..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pr-10 pl-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                        />
+                    </div>
+                </div>
+
+                {/* Patients Grid */}
+                {filteredPatients.length === 0 ? (
+                    <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-100">
+                        <div className="text-6xl mb-4">👶</div>
+                        <h3 className="text-xl font-semibold text-gray-700">لا يوجد مرضى</h3>
+                        <p className="text-gray-400 mt-1">
+                            {searchTerm ? 'لا توجد نتائج مطابقة للبحث' : 'ابدأ بإضافة أول مريض'}
+                        </p>
+                        {!searchTerm && (
+                            <button
+                                onClick={() => router.push('/assistant/patients/new')}
+                                className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                            >
+                                إضافة مريض جديد
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {filteredPatients.map((patient) => (
+                            <div
+                                key={patient.id}
+                                className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition cursor-pointer"
+                                onClick={() => router.push(`/doctor/patients/${patient.id}`)}
+                            >
+                                <div className="flex justify-between items-start mb-3">
+                                    <div>
+                                        <h3 className="text-lg font-semibold">{patient.name}</h3>
+                                        <p className="text-sm text-gray-500">
+                                            <Calendar className="w-3 h-3 inline ml-1" />
+                                            {calculateAge(patient.birth_date)}
+                                        </p>
+                                    </div>
+                                    <ArrowRight className="w-5 h-5 text-gray-400" />
+                                </div>
+                                <div className="space-y-2 text-sm">
+                                    <p className="text-gray-600">
+                                        <User className="w-3 h-3 inline ml-1" />
+                                        ولي الأمر: {patient.parent_name}
+                                    </p>
+                                    <p className="text-gray-600">
+                                        <Phone className="w-3 h-3 inline ml-1" />
+                                        {patient.parent_phone}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    )
+}
+
+
+========================================
+📁 FILE: ./app/assistant/patients/new/page.tsx
+========================================
+'use client'
+
+import { useState } from 'react'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
+import { useRouter } from 'next/navigation'
+import { ChevronLeft, Save, User, Phone, Calendar, Mail, Home } from 'lucide-react'
+
+export default function NewPatientPage() {
+    const { user, loading } = useAuth()
+    const router = useRouter()
+    const [loadingSubmit, setLoadingSubmit] = useState(false)
+    const [error, setError] = useState('')
+
+    const [formData, setFormData] = useState({
+        name: '',
+        birth_date: '',
+        gender: '',
+        parent_name: '',
+        parent_phone: '',
+        parent_email: '',
+        address: '',
+    })
+
+    const [customFields, setCustomFields] = useState<{ key: string; value: string }[]>([])
+
+    if (!loading && !user) {
+        router.push('/login')
+        return null
+    }
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setLoadingSubmit(true)
+        setError('')
+
+        // تحويل الحقول المخصصة إلى JSON
+        const customFieldsObj: Record<string, string> = {}
+        customFields.forEach(field => {
+            if (field.key.trim()) {
+                customFieldsObj[field.key.trim()] = field.value
+            }
+        })
+
+        const { error: insertError } = await supabase
+            .from('patients')
+            .insert({
+                name: formData.name,
+                birth_date: formData.birth_date,
+                gender: formData.gender || null,
+                parent_name: formData.parent_name,
+                parent_phone: formData.parent_phone,
+                parent_email: formData.parent_email || null,
+                address: formData.address || null,
+                custom_fields: customFieldsObj,
+                created_by: user?.id
+            })
+
+        if (insertError) {
+            setError(insertError.message)
+            setLoadingSubmit(false)
+            return
+        }
+
+        router.push('/assistant')
+    }
+
+    const addCustomField = () => {
+        setCustomFields([...customFields, { key: '', value: '' }])
+    }
+
+    const removeCustomField = (index: number) => {
+        setCustomFields(customFields.filter((_, i) => i !== index))
+    }
+
+    const updateCustomField = (index: number, field: 'key' | 'value', value: string) => {
+        const updated = [...customFields]
+        updated[index][field] = value
+        setCustomFields(updated)
+    }
+
+    return (
+        <div className="min-h-screen bg-gray-50">
+            {/* Header */}
+            <header className="bg-white shadow-sm border-b">
+                <div className="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => router.push('/assistant')}
+                            className="text-gray-600 hover:text-gray-800 flex items-center gap-1"
+                        >
+                            <ChevronLeft className="w-5 h-5" />
+                            رجوع
+                        </button>
+                        <h1 className="text-2xl font-bold text-gray-800">➕ تسجيل مريض جديد</h1>
+                    </div>
+                </div>
+            </header>
+
+            <div className="max-w-4xl mx-auto p-6">
+                <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    {error && (
+                        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+                            {error}
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* اسم الطفل */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <User className="w-4 h-4 inline ml-1" />
+                                اسم الطفل *
+                            </label>
+                            <input
+                                type="text"
+                                value={formData.name}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                placeholder="أدخل اسم الطفل"
+                                required
+                            />
+                        </div>
+
+                        {/* تاريخ الميلاد */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <Calendar className="w-4 h-4 inline ml-1" />
+                                تاريخ الميلاد *
+                            </label>
+                            <input
+                                type="date"
+                                value={formData.birth_date}
+                                onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                required
+                            />
+                        </div>
+
+                        {/* النوع */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                النوع
+                            </label>
+                            <select
+                                value={formData.gender}
+                                onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                            >
+                                <option value="">اختر</option>
+                                <option value="male">ذكر</option>
+                                <option value="female">أنثى</option>
+                            </select>
+                        </div>
+
+                        {/* اسم ولي الأمر */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <User className="w-4 h-4 inline ml-1" />
+                                اسم ولي الأمر *
+                            </label>
+                            <input
+                                type="text"
+                                value={formData.parent_name}
+                                onChange={(e) => setFormData({ ...formData, parent_name: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                placeholder="أدخل اسم ولي الأمر"
+                                required
+                            />
+                        </div>
+
+                        {/* رقم الهاتف */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <Phone className="w-4 h-4 inline ml-1" />
+                                رقم الهاتف *
+                            </label>
+                            <input
+                                type="tel"
+                                value={formData.parent_phone}
+                                onChange={(e) => setFormData({ ...formData, parent_phone: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                placeholder="مثال: 01012345678"
+                                required
+                            />
+                        </div>
+
+                        {/* البريد الإلكتروني */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <Mail className="w-4 h-4 inline ml-1" />
+                                البريد الإلكتروني
+                            </label>
+                            <input
+                                type="email"
+                                value={formData.parent_email}
+                                onChange={(e) => setFormData({ ...formData, parent_email: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                placeholder="example@email.com"
+                            />
+                        </div>
+
+                        {/* العنوان */}
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <Home className="w-4 h-4 inline ml-1" />
+                                العنوان
+                            </label>
+                            <input
+                                type="text"
+                                value={formData.address}
+                                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                placeholder="العنوان بالكامل"
+                            />
+                        </div>
+                    </div>
+
+                    {/* الحقول المخصصة */}
+                    <div className="mt-6 pt-6 border-t border-gray-200">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="font-semibold">حقول مخصصة</h3>
+                            <button
+                                type="button"
+                                onClick={addCustomField}
+                                className="text-sm text-blue-600 hover:text-blue-700"
+                            >
+                                + إضافة حقل
+                            </button>
+                        </div>
+
+                        {customFields.map((field, index) => (
+                            <div key={index} className="flex gap-3 mb-3">
+                                <input
+                                    type="text"
+                                    placeholder="اسم الحقل"
+                                    value={field.key}
+                                    onChange={(e) => updateCustomField(index, 'key', e.target.value)}
+                                    className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="القيمة"
+                                    value={field.value}
+                                    onChange={(e) => updateCustomField(index, 'value', e.target.value)}
+                                    className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => removeCustomField(index)}
+                                    className="px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* أزرار الإرسال */}
+                    <div className="flex gap-4 mt-6 pt-6 border-t border-gray-200">
+                        <button
+                            type="submit"
+                            disabled={loadingSubmit}
+                            className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                        >
+                            <Save className="w-4 h-4" />
+                            {loadingSubmit ? 'جاري الحفظ...' : 'حفظ'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => router.push('/assistant')}
+                            className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+                        >
+                            إلغاء
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    )
+}
+
+
+========================================
+📁 FILE: ./app/assistant/queue/page.tsx
+========================================
+'use client'
+
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
+import { useRouter } from 'next/navigation'
+import { ChevronLeft, Clock, User, Phone, RefreshCw, Plus } from 'lucide-react'
+
+// ✅ تعريف الـ Interface
+interface QueueItem {
+    id: string
+    patient_id: string
+    queue_number: number
+    status: 'waiting' | 'in_clinic' | 'done' | 'cancelled'
+    appointment_date: string
+    vital_signs: any
+    notes: string | null
+    patients: {
+        name: string
+        parent_name: string
+        parent_phone: string
+    } | null
+}
+
+export default function AssistantQueuePage() {
+    const { user, loading } = useAuth()
+    const router = useRouter()
+    const [queue, setQueue] = useState<QueueItem[]>([])
+    const [loadingQueue, setLoadingQueue] = useState(true)
+    const [today, setToday] = useState('')
+    const [showAddModal, setShowAddModal] = useState(false)
+    const [patients, setPatients] = useState<{ id: string; name: string }[]>([])
+    const [selectedPatient, setSelectedPatient] = useState('')
+    const [vitalSigns, setVitalSigns] = useState({
+        temperature: '',
+        weight: '',
+        heart_rate: '',
+        blood_pressure: ''
+    })
+    const [chiefComplaint, setChiefComplaint] = useState('')
+    const [addingToQueue, setAddingToQueue] = useState(false)
+
+    useEffect(() => {
+        if (!loading && !user) {
+            router.push('/login')
+            return
+        }
+
+        const todayStr = new Date().toISOString().split('T')[0]
+        setToday(todayStr)
+
+        fetchQueue()
+        fetchPatients()
+    }, [user, loading, router])
+
+    // ✅ دالة جلب البيانات - تم تعديلها
+    const fetchQueue = async () => {
+        setLoadingQueue(true)
+        const todayStr = new Date().toISOString().split('T')[0]
+        
+        const { data, error } = await supabase
+            .from('appointments')
+            .select(`
+                id,
+                patient_id,
+                queue_number,
+                status,
+                appointment_date,
+                vital_signs,
+                notes,
+                patients (
+                    name,
+                    parent_name,
+                    parent_phone
+                )
+            `)
+            .eq('appointment_date', todayStr)
+            .in('status', ['waiting', 'in_clinic'])
+            .order('queue_number', { ascending: true })
+
+        if (!error && data) {
+            // ✅ إعادة تشكيل البيانات
+            const formattedData: QueueItem[] = data.map((item: any) => ({
+                id: item.id,
+                patient_id: item.patient_id,
+                queue_number: item.queue_number,
+                status: item.status,
+                appointment_date: item.appointment_date,
+                vital_signs: item.vital_signs || {},
+                notes: item.notes || null,
+                patients: item.patients?.[0] || null
+            }))
+            
+            setQueue(formattedData)
+        }
+        setLoadingQueue(false)
+    }
+
+    const fetchPatients = async () => {
+        const { data } = await supabase
+            .from('patients')
+            .select('id, name')
+            .order('name')
+        setPatients(data || [])
+    }
+
+    const addToQueue = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!selectedPatient) return
+
+        setAddingToQueue(true)
+
+        const { data: queueData } = await supabase
+            .from('appointments')
+            .select('queue_number')
+            .eq('appointment_date', today)
+            .order('queue_number', { ascending: false })
+            .limit(1)
+
+        const nextNumber = (queueData?.[0]?.queue_number || 0) + 1
+
+        const vitalSignsObj: Record<string, any> = {}
+        if (vitalSigns.temperature) vitalSignsObj.temperature = parseFloat(vitalSigns.temperature)
+        if (vitalSigns.weight) vitalSignsObj.weight = parseFloat(vitalSigns.weight)
+        if (vitalSigns.heart_rate) vitalSignsObj.heart_rate = vitalSigns.heart_rate
+        if (vitalSigns.blood_pressure) vitalSignsObj.blood_pressure = vitalSigns.blood_pressure
+
+        const { error } = await supabase
+            .from('appointments')
+            .insert({
+                patient_id: selectedPatient,
+                appointment_date: today,
+                queue_number: nextNumber,
+                status: 'waiting',
+                vital_signs: vitalSignsObj,
+                chief_complaint: chiefComplaint || null,
+                created_by: user?.id
+            })
+
+        if (!error) {
+            setShowAddModal(false)
+            setSelectedPatient('')
+            setVitalSigns({ temperature: '', weight: '', heart_rate: '', blood_pressure: '' })
+            setChiefComplaint('')
+            fetchQueue()
+        }
+        setAddingToQueue(false)
+    }
+
+    const getStatusBadge = (status: string) => {
+        const colors: Record<string, string> = {
+            waiting: 'bg-yellow-100 text-yellow-700',
+            in_clinic: 'bg-green-100 text-green-700',
+            done: 'bg-blue-100 text-blue-700',
+            cancelled: 'bg-red-100 text-red-700'
+        }
+        const labels: Record<string, string> = {
+            waiting: 'في الانتظار',
+            in_clinic: 'في العيادة',
+            done: 'تم الكشف',
+            cancelled: 'ملغي'
+        }
+        return (
+            <span className={`px-3 py-1 rounded-full text-xs ${colors[status] || 'bg-gray-100 text-gray-700'}`}>
+                {labels[status] || status}
+            </span>
+        )
+    }
+
+    if (loading || loadingQueue) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <div className="text-4xl mb-4">🔄</div>
+                    <p className="text-gray-500">جاري التحميل...</p>
+                </div>
+            </div>
+        )
+    }
+
+    return (
+        <div className="min-h-screen bg-gray-50">
+            <header className="bg-white shadow-sm border-b">
+                <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => router.push('/assistant')}
+                            className="text-gray-600 hover:text-gray-800"
+                        >
+                            <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <h1 className="text-2xl font-bold text-gray-800">📋 قائمة الانتظار</h1>
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={fetchQueue}
+                            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+                        >
+                            <RefreshCw className="w-4 h-4" />
+                            تحديث
+                        </button>
+                        <button
+                            onClick={() => setShowAddModal(true)}
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                        >
+                            <Plus className="w-4 h-4" />
+                            إضافة للانتظار
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <div className="max-w-4xl mx-auto p-6">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <p className="text-sm text-gray-500">تاريخ اليوم</p>
+                            <p className="font-medium">{today}</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-sm text-gray-500">عدد المنتظرين</p>
+                            <p className="text-2xl font-bold text-yellow-600">{queue.filter(q => q.status === 'waiting').length}</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-sm text-gray-500">في العيادة</p>
+                            <p className="text-2xl font-bold text-green-600">{queue.filter(q => q.status === 'in_clinic').length}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {queue.length === 0 ? (
+                    <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-100">
+                        <div className="text-6xl mb-4">📋</div>
+                        <h3 className="text-xl font-semibold text-gray-700">قائمة الانتظار فارغة</h3>
+                        <p className="text-gray-400 mt-1">لا يوجد مرضى في الانتظار اليوم</p>
+                        <button
+                            onClick={() => setShowAddModal(true)}
+                            className="mt-4 text-blue-600 hover:text-blue-700"
+                        >
+                            إضافة أول مريض للانتظار
+                        </button>
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {queue.map((item) => (
+                            <div
+                                key={item.id}
+                                className={`bg-white rounded-xl shadow-sm border p-6 transition ${
+                                    item.status === 'in_clinic' ? 'border-green-300 bg-green-50' : 'border-gray-100'
+                                }`}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xl">
+                                            #{item.queue_number}
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-semibold">{item.patients?.name || 'غير معروف'}</h3>
+                                            <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
+                                                <span className="flex items-center gap-1">
+                                                    <User className="w-3 h-3" />
+                                                    {item.patients?.parent_name || 'غير معروف'}
+                                                </span>
+                                                <span className="flex items-center gap-1">
+                                                    <Phone className="w-3 h-3" />
+                                                    {item.patients?.parent_phone || 'غير معروف'}
+                                                </span>
+                                            </div>
+                                            {item.vital_signs && Object.keys(item.vital_signs).length > 0 && (
+                                                <div className="flex gap-3 mt-2 text-sm">
+                                                    {item.vital_signs.temperature && (
+                                                        <span className="bg-red-50 text-red-700 px-2 py-1 rounded">
+                                                            🌡️ {item.vital_signs.temperature}°C
+                                                        </span>
+                                                    )}
+                                                    {item.vital_signs.weight && (
+                                                        <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded">
+                                                            ⚖️ {item.vital_signs.weight}kg
+                                                        </span>
+                                                    )}
+                                                    {item.vital_signs.heart_rate && (
+                                                        <span className="bg-purple-50 text-purple-700 px-2 py-1 rounded">
+                                                            ❤️ {item.vital_signs.heart_rate}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        {getStatusBadge(item.status)}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {showAddModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xl font-bold">➕ إضافة مريض لقائمة الانتظار</h3>
+                            <button
+                                onClick={() => setShowAddModal(false)}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <form onSubmit={addToQueue}>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        اختيار المريض *
+                                    </label>
+                                    <select
+                                        value={selectedPatient}
+                                        onChange={(e) => setSelectedPatient(e.target.value)}
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                        required
+                                    >
+                                        <option value="">اختر مريض...</option>
+                                        {patients.map((p) => (
+                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        الشكوى الرئيسية
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={chiefComplaint}
+                                        onChange={(e) => setChiefComplaint(e.target.value)}
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                        placeholder="مثال: ارتفاع في درجة الحرارة"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            🌡️ درجة الحرارة
+                                        </label>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={vitalSigns.temperature}
+                                            onChange={(e) => setVitalSigns({ ...vitalSigns, temperature: e.target.value })}
+                                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                            placeholder="مثال: 37.5"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            ⚖️ الوزن (كجم)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={vitalSigns.weight}
+                                            onChange={(e) => setVitalSigns({ ...vitalSigns, weight: e.target.value })}
+                                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                            placeholder="مثال: 15.5"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            ❤️ معدل ضربات القلب
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={vitalSigns.heart_rate}
+                                            onChange={(e) => setVitalSigns({ ...vitalSigns, heart_rate: e.target.value })}
+                                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                            placeholder="مثال: 80"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            💓 ضغط الدم
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={vitalSigns.blood_pressure}
+                                            onChange={(e) => setVitalSigns({ ...vitalSigns, blood_pressure: e.target.value })}
+                                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                            placeholder="مثال: 120/80"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3 pt-4">
+                                    <button
+                                        type="submit"
+                                        disabled={addingToQueue}
+                                        className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                                    >
+                                        {addingToQueue ? 'جاري الإضافة...' : 'إضافة للانتظار'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAddModal(false)}
+                                        className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 transition"
+                                    >
+                                        إلغاء
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
+
+
+========================================
+📁 FILE: ./app/assistant/page.tsx
+========================================
+'use client'
+
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
+import { useRouter } from 'next/navigation'
+import { Users, Calendar, Clock, Plus, LogOut } from 'lucide-react'
+
+interface Stats {
+    totalPatients: number
+    todayAppointments: number
+    waitingQueue: number
+}
+
+export default function AssistantDashboard() {
+    const { user, loading } = useAuth()
+    const router = useRouter()
+    const [stats, setStats] = useState<Stats>({
+        totalPatients: 0,
+        todayAppointments: 0,
+        waitingQueue: 0
+    })
+    const [recentPatients, setRecentPatients] = useState<any[]>([])
+
+    useEffect(() => {
+        if (!loading && !user) {
+            router.push('/login')
+            return
+        }
+
+        const fetchStats = async () => {
+            const { count: patientsCount } = await supabase
+                .from('patients')
+                .select('*', { count: 'exact', head: true })
+
+            const today = new Date().toISOString().split('T')[0]
+            const { count: todayCount } = await supabase
+                .from('appointments')
+                .select('*', { count: 'exact', head: true })
+                .eq('appointment_date', today)
+
+            const { count: waitingCount } = await supabase
+                .from('appointments')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'waiting')
+
+            const { data: recent } = await supabase
+                .from('patients')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(5)
+
+            setStats({
+                totalPatients: patientsCount || 0,
+                todayAppointments: todayCount || 0,
+                waitingQueue: waitingCount || 0
+            })
+            setRecentPatients(recent || [])
+        }
+
+        fetchStats()
+    }, [user, loading, router])
+
+    const handleLogout = async () => {
+        await supabase.auth.signOut()
+        router.push('/login')
+    }
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <div className="text-4xl mb-4">🔄</div>
+                    <p className="text-gray-500">جاري التحميل...</p>
+                </div>
+            </div>
+        )
+    }
+
+    const statCards = [
+        { title: 'إجمالي المرضى', value: stats.totalPatients, icon: Users, color: 'bg-purple-500' },
+        { title: 'مواعيد اليوم', value: stats.todayAppointments, icon: Calendar, color: 'bg-green-500' },
+        { title: 'قائمة الانتظار', value: stats.waitingQueue, icon: Clock, color: 'bg-yellow-500' },
+    ]
+
+    return (
+        <div className="min-h-screen bg-gray-50">
+            {/* Header */}
+            <header className="bg-white shadow-sm border-b">
+                <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                        <h1 className="text-2xl font-bold text-gray-800">🏥 PediaCare</h1>
+                        <span className="bg-purple-100 text-purple-700 text-xs px-3 py-1 rounded-full">مساعد</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <span className="text-gray-600">{user?.user_metadata?.full_name || 'مساعد'}</span>
+                        <button
+                            onClick={handleLogout}
+                            className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition"
+                        >
+                            <LogOut className="w-4 h-4" />
+                            تسجيل خروج
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <div className="max-w-7xl mx-auto p-6">
+                {/* Welcome */}
+                <div className="mb-8">
+                    <h2 className="text-3xl font-bold text-gray-800">
+                        مرحباً {user?.user_metadata?.full_name || 'مساعد'} 👋
+                    </h2>
+                    <p className="text-gray-500 mt-1">لوحة تحكم المساعد - إدارة المرضى والمواعيد</p>
+                </div>
+
+                {/* Stats Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    {statCards.map((stat, index) => (
+                        <div key={index} className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-gray-500 text-sm">{stat.title}</p>
+                                    <p className="text-3xl font-bold mt-1">{stat.value}</p>
+                                </div>
+                                <div className={`${stat.color} p-3 rounded-xl text-white`}>
+                                    <stat.icon className="w-6 h-6" />
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Quick Actions */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    <button
+                        onClick={() => router.push('/assistant/patients/new')}
+                        className="bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-xl shadow-sm transition text-center"
+                    >
+                        <div className="text-2xl mb-2">➕</div>
+                        <p className="text-sm font-medium">تسجيل مريض جديد</p>
+                    </button>
+                    <button
+                        onClick={() => router.push('/assistant/patients')}
+                        className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition text-center"
+                    >
+                        <div className="text-2xl mb-2">👶</div>
+                        <p className="text-sm font-medium">قائمة المرضى</p>
+                    </button>
+                    <button
+                        onClick={() => router.push('/assistant/queue')}
+                        className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition text-center"
+                    >
+                        <div className="text-2xl mb-2">📋</div>
+                        <p className="text-sm font-medium">قائمة الانتظار</p>
+                    </button>
+                    <button
+                        className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition text-center opacity-50 cursor-not-allowed"
+                    >
+                        <div className="text-2xl mb-2">💳</div>
+                        <p className="text-sm font-medium">الفواتير (قريباً)</p>
+                    </button>
+                </div>
+
+                {/* Recent Patients */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-semibold">📋 آخر المرضى المسجلين</h3>
+                        <button
+                            onClick={() => router.push('/assistant/patients')}
+                            className="text-blue-600 hover:text-blue-700 text-sm"
+                        >
+                            عرض الكل →
+                        </button>
+                    </div>
+                    {recentPatients.length === 0 ? (
+                        <p className="text-gray-400 text-center py-8">لا يوجد مرضى مسجلين بعد</p>
+                    ) : (
+                        <div className="divide-y">
+                            {recentPatients.map((patient) => (
+                                <div key={patient.id} className="py-3 flex justify-between items-center">
+                                    <div>
+                                        <p className="font-medium">{patient.name}</p>
+                                        <p className="text-sm text-gray-500">ولي الأمر: {patient.parent_name}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => router.push(`/doctor/patients/${patient.id}`)}
+                                        className="text-blue-600 hover:text-blue-700 text-sm"
+                                    >
+                                        عرض
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    )
+}
+
+
+========================================
+📁 FILE: ./app/page.tsx
+========================================
+'use client'
+
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+
+export default function HomePage() {
+    const router = useRouter()
+
+    useEffect(() => {
+        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
+        const userData = localStorage.getItem('user')
+        
+        console.log('🔍 التحقق من حالة الدخول:', { isLoggedIn, userData })
+        
+        if (isLoggedIn && userData) {
+            try {
+                const user = JSON.parse(userData)
+                console.log('👤 المستخدم:', user)
+                if (user.role === 'doctor') {
+                    router.push('/doctor')
+                } else {
+                    router.push('/assistant')
+                }
+            } catch (e) {
+                console.error('❌ خطأ في قراءة البيانات:', e)
+                router.push('/login')
+            }
+        } else {
+            router.push('/login')
+        }
+    }, [router])
+
+    return (
+        <div className="min-h-screen flex items-center justify-center">
+            <div className="text-center">
+                <div className="text-4xl mb-4">🔄</div>
+                <p className="text-gray-500">جاري التحميل...</p>
+            </div>
+        </div>
+    )
+}
+
+
+========================================
+📁 FILE: ./app/login/page.tsx
+========================================
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+
+export default function LoginPage() {
+    const [identifier, setIdentifier] = useState('doctor')
+    const [password, setPassword] = useState('Doctor@123456')
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState('')
+    const router = useRouter()
+
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setLoading(true)
+        setError('')
+
+        try {
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ identifier, password })
+            })
+
+            const data = await res.json()
+
+            if (!res.ok) {
+                setError(data.error || 'فشل تسجيل الدخول')
+                setLoading(false)
+                return
+            }
+
+            // حفظ بيانات المستخدم
+            localStorage.setItem('user', JSON.stringify(data.user))
+            localStorage.setItem('isLoggedIn', 'true')
+
+            if (data.user.role === 'doctor') {
+                router.push('/doctor')
+            } else {
+                router.push('/assistant')
+            }
+        } catch {
+            setError('حدث خطأ في الاتصال بالخادم')
+        }
+        setLoading(false)
+    }
+
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+            <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
+                <div className="text-center mb-8">
+                    <div className="text-5xl mb-3">🏥</div>
+                    <h1 className="text-3xl font-bold text-gray-800">PediaCare</h1>
+                    <p className="text-gray-500 mt-1">نظام إدارة عيادة الأطفال</p>
+                </div>
+
+                <form onSubmit={handleLogin} className="space-y-5">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            اسم المستخدم أو البريد الإلكتروني
+                        </label>
+                        <input
+                            type="text"
+                            value={identifier}
+                            onChange={(e) => setIdentifier(e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                            placeholder="أدخل اسم المستخدم أو البريد"
+                            required
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            كلمة المرور
+                        </label>
+                        <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                            placeholder="أدخل كلمة المرور"
+                            required
+                        />
+                    </div>
+
+                    {error && (
+                        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                            {error}
+                        </div>
+                    )}
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition disabled:opacity-50"
+                    >
+                        {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
+                    </button>
+                </form>
+
+                <div className="mt-6 text-center text-sm text-gray-500">
+                    <p>حسابات تجريبية:</p>
+                    <p className="mt-1">
+                        <span className="font-medium">طبيب:</span> doctor / Doctor@123456
+                    </p>
+                    <p>
+                        <span className="font-medium">مساعد:</span> assistant / Assistant@123456
+                    </p>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+
+========================================
+📁 FILE: ./app/auth/callback/route.ts
+========================================
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
+import { NextResponse } from 'next/server'
+
+export async function GET(request: Request) {
+    const requestUrl = new URL(request.url)
+    const code = requestUrl.searchParams.get('code')
+
+    if (code) {
+        const supabase = createRouteHandlerClient({ cookies })
+        await supabase.auth.exchangeCodeForSession(code)
+    }
+
+    return NextResponse.redirect(new URL('/', request.url))
+}
+
+
