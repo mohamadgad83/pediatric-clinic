@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, Clock, User, Phone, RefreshCw, Plus } from 'lucide-react'
 
-// ✅ تعريف الـ Interface بشكل صحيح
+// ✅ تعريف الـ Interface
 interface QueueItem {
     id: string
     patient_id: string
@@ -53,7 +53,7 @@ export default function AssistantQueuePage() {
         fetchPatients()
     }, [user, loading, router])
 
-    // ✅ دالة جلب قائمة الانتظار - تم تعديلها
+    // ✅ دالة جلب البيانات - تم تعديلها
     const fetchQueue = async () => {
         setLoadingQueue(true)
         const todayStr = new Date().toISOString().split('T')[0]
@@ -79,7 +79,7 @@ export default function AssistantQueuePage() {
             .order('queue_number', { ascending: true })
 
         if (!error && data) {
-            // ✅ إعادة تشكيل البيانات بشكل صحيح
+            // ✅ إعادة تشكيل البيانات
             const formattedData: QueueItem[] = data.map((item: any) => ({
                 id: item.id,
                 patient_id: item.patient_id,
@@ -180,7 +180,6 @@ export default function AssistantQueuePage() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Header */}
             <header className="bg-white shadow-sm border-b">
                 <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
                     <div className="flex items-center gap-4">
@@ -298,7 +297,6 @@ export default function AssistantQueuePage() {
                 )}
             </div>
 
-            {/* Modal إضافة مريض للانتظار */}
             {showAddModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
