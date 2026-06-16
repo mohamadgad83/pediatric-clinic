@@ -16,22 +16,31 @@ export default function LoginPage() {
         setLoading(true)
         setError('')
 
+        console.log('🔐 محاولة تسجيل الدخول...')
+
         const { data, error: authError } = await supabase.auth.signInWithPassword({
             email,
             password
         })
 
+        console.log('📊 نتيجة Supabase:', { data, authError })
+
         if (authError) {
+            console.log('❌ خطأ:', authError.message)
             setError(authError.message)
             setLoading(false)
             return
         }
 
-        const { data: profile } = await supabase
-            .from('profiles')
+        console.log('✅ تم تسجيل الدخول بنجاح')
+
+        const { data: profile, error: profileError } = await supabase
+            .from('clinic_profiles')
             .select('role')
             .eq('id', data.user.id)
             .single()
+
+        console.log('📋 البروفايل:', { profile, profileError })
 
         if (profile?.role === 'doctor') {
             router.push('/doctor')
