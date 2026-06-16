@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>📦 تصدير أكواد PediaCare</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .card {
+            background: white;
+            padding: 3rem 2.5rem;
+            border-radius: 28px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.4);
+        }
+        .card h1 {
+            font-size: 2.2rem;
+            color: #0f172a;
+            margin-bottom: 0.5rem;
+        }
+        .card p {
+            color: #64748b;
+            margin-bottom: 2rem;
+            font-size: 1.05rem;
+        }
+        .btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #2563eb, #7c3aed);
+            color: white;
+            font-size: 1.2rem;
+            font-weight: 600;
+            padding: 1rem 2.5rem;
+            border: none;
+            border-radius: 60px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 24px rgba(37, 99, 235, 0.35);
+        }
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(37, 99, 235, 0.5);
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .status {
+            margin-top: 1.5rem;
+            font-size: 0.95rem;
+            color: #475569;
+            min-height: 2rem;
+        }
+        .status.loading {
+            color: #2563eb;
+        }
+        .status.done {
+            color: #16a34a;
+        }
+        .status.error {
+            color: #dc2626;
+        }
+        .footer {
+            margin-top: 2rem;
+            font-size: 0.8rem;
+            color: #94a3b8;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 1.5rem;
+        }
+        .badge {
+            display: inline-block;
+            background: #e2e8f0;
+            padding: 0.2rem 0.8rem;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            color: #475569;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>📦 PediaCare</h1>
+        <p>اضغط الزر لتصدير كل أكواد المشروع في ملف واحد</p>
+
+        <button class="btn" id="exportBtn">
+            ⬇️ تصدير الأكواد
+        </button>
+
+        <div class="status" id="status">⏳ جاهز للتصدير</div>
+
+        <div class="footer">
+            <span class="badge">🔧 Next.js + Supabase</span>
+            <span class="badge">🩺 عيادة أطفال</span>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('exportBtn').addEventListener('click', async function() {
+            const btn = this;
+            const status = document.getElementById('status');
+
+            btn.disabled = true;
+            btn.textContent = '⏳ جاري التصدير...';
+            status.textContent = '⏳ جاري جمع الملفات...';
+            status.className = 'status loading';
+
+            try {
+                // 1. جلب قائمة الملفات من الـ API
+                const fileList = [
+                    'app/api/login/route.ts',
+                    'app/assistant/page.tsx',
+                    'app/assistant/patients/page.tsx',
+                    'app/assistant/patients/new/page.tsx',
+                    'app/assistant/queue/page.tsx',
+                    'app/doctor/page.tsx',
+                    'app/doctor/patients/page.tsx',
+                    'app/doctor/patients/[id]/page.tsx',
+                    'app/doctor/queue/page.tsx',
+                    'app/login/page.tsx',
+                    'app/layout.tsx',
+                    'app/page.tsx',
+                    'app/globals.css',
+                    'hooks/useAuth.ts',
+                    'lib/supabase.ts',
+                    'middleware.ts',
+                    'package.json',
+                    'next.config.js',
+                    'tailwind.config.js',
+                    'postcss.config.js',
+                    'tsconfig.json'
+                ];
+
+                let fullContent = '# 📦 PediaCare - Full Project Code\n\n';
+                fullContent += `Generated on: ${new Date().toLocaleString('ar-EG')}\n`;
+                fullContent += '=' . repeat(60) + '\n\n';
+
+                for (const file of fileList) {
+                    status.textContent = `⏳ جاري تحميل: ${file}`;
+                    
+                    try {
+                        const res = await fetch(`/${file}`);
+                        if (res.ok) {
+                            const content = await res.text();
+                            fullContent += `📁 FILE: ${file}\n`;
+                            fullContent += '=' . repeat(60) + '\n';
+                            fullContent += content;
+                            fullContent += '\n\n' + '=' . repeat(60) + '\n\n';
+                        } else {
+                            fullContent += `📁 FILE: ${file} (⚠️ غير موجود)\n`;
+                            fullContent += '=' . repeat(60) + '\n';
+                            fullContent += '❌ الملف غير موجود\n\n';
+                        }
+                    } catch (e) {
+                        fullContent += `📁 FILE: ${file} (⚠️ خطأ)\n`;
+                        fullContent += '=' . repeat(60) + '\n';
+                        fullContent += `❌ خطأ: ${e.message}\n\n`;
+                    }
+                }
+
+                // 2. إضافة التوثيق في نهاية الملف
+                fullContent += '\n\n';
+                fullContent += '# 📚 توثيق المشروع\n\n';
+                fullContent += '## 🔗 الروابط المهمة\n';
+                fullContent += '- التطبيق: https://pediatric-clinic-psi.vercel.app\n';
+                fullContent += '- GitHub: https://github.com/mohamadgad83/pediatric-clinic\n';
+                fullContent += '- Supabase: https://app.supabase.com/project/cuchwughgvhiwgaoodib\n\n';
+                fullContent += '## 👥 الصلاحيات\n';
+                fullContent += '| الصلاحية | الطبيب | المساعد |\n';
+                fullContent += '|-----------|--------|---------|\n';
+                fullContent += '| عرض المرضى | ✅ | ✅ |\n';
+                fullContent += '| إضافة مريض | ✅ | ✅ |\n';
+                fullContent += '| تعديل مريض | ✅ | ✅ |\n';
+                fullContent += '| عرض ملف مريض | ✅ | ✅ |\n';
+                fullContent += '| إضافة سجل طبي | ✅ | ❌ |\n';
+                fullContent += '| عرض قائمة الانتظار | ✅ | ✅ |\n';
+                fullContent += '| إضافة للانتظار | ❌ | ✅ |\n';
+                fullContent += '| تحديث حالة مريض | ✅ | ❌ |\n\n';
+                fullContent += '## 🔑 الحسابات التجريبية\n';
+                fullContent += '- طبيب: doctor / Doctor@123456\n';
+                fullContent += '- مساعد: assistant / Assistant@123456\n';
+
+                // 3. إنشاء ملف للتحميل
+                const blob = new Blob([fullContent], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `pediaCare-code-${new Date().toISOString().slice(0,10)}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                status.textContent = `✅ تم التصدير بنجاح! (${Math.round(blob.size / 1024)} KB)`;
+                status.className = 'status done';
+                btn.textContent = '✅ تم!';
+
+            } catch (error) {
+                status.textContent = `❌ خطأ: ${error.message}`;
+                status.className = 'status error';
+                btn.textContent = '⬇️ حاول مرة أخرى';
+            } finally {
+                btn.disabled = false;
+                setTimeout(() => {
+                    btn.textContent = '⬇️ تصدير الأكواد';
+                }, 3000);
+            }
+        });
+    </script>
+</body>
+</html>
