@@ -30,6 +30,7 @@ export default function LoginPage() {
                 return
             }
 
+            // حفظ بيانات المستخدم
             localStorage.setItem('user', JSON.stringify(data.user))
             localStorage.setItem('isLoggedIn', 'true')
 
@@ -100,10 +101,10 @@ export default function LoginPage() {
                 <div className="mt-6 text-center text-sm text-gray-500">
                     <p>حسابات تجريبية:</p>
                     <p className="mt-1">
-                        <span className="font-medium">طبيب:</span> doctor أو doctor@clinic.com / Doctor@123456
+                        <span className="font-medium">طبيب:</span> doctor / Doctor@123456
                     </p>
                     <p>
-                        <span className="font-medium">مساعد:</span> assistant أو assistant@clinic.com / Assistant@123456
+                        <span className="font-medium">مساعد:</span> assistant / Assistant@123456
                     </p>
                 </div>
             </div>
