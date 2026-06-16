@@ -1,103 +1,117 @@
-import { createClient } from '@supabase/supabase-js'
-import { NextResponse } from 'next/server'
+'use client'
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
-export async function POST(request: Request) {
-    try {
-        const { identifier, password } = await request.json()
+export default function LoginPage() {
+    const [identifier, setIdentifier] = useState('doctor')
+    const [password, setPassword] = useState('Doctor@123456')
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState('')
+    const router = useRouter()
 
-        if (!identifier || !password) {
-            return NextResponse.json(
-                { error: 'اسم المستخدم/البريد الإلكتروني وكلمة المرور مطلوبين' },
-                { status: 400 }
-            )
-        }
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setLoading(true)
+        setError('')
 
-        // 1. البحث عن المستخدم بـ username أو email
-        const { data: user, error: userError } = await supabase
-            .from('clinic_profiles')
-            .select('id, full_name, role, email, username, password_hash')
-            .or(`username.eq.${identifier},email.eq.${identifier}`)
-            .single()
-
-        if (userError || !user) {
-            console.log('❌ المستخدم غير موجود:', identifier)
-            return NextResponse.json(
-                { error: 'بيانات الدخول غير صحيحة' },
-                { status: 401 }
-            )
-        }
-
-        console.log('✅ المستخدم موجود:', user.username)
-
-        // 2. التحقق من كلمة المرور باستخدام استعلام مباشر
-        const { data: validUser, error: validError } = await supabase
-            .rpc('check_password', {
-                input_password: password,
-                stored_hash: user.password_hash
+        try {
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ identifier, password })
             })
 
-        // لو الدالة check_password مش موجودة، استخدم طريقة بديلة
-        if (validError) {
-            console.log('⚠️ دالة check_password مش موجودة، استخدم طريقة بديلة')
-            
-            // طريقة بديلة: جلب المستخدم ومقارنة كلمة المرور يدوياً
-            const { data: checkResult } = await supabase
-                .from('clinic_profiles')
-                .select('id')
-                .eq('id', user.id)
-                .single()
+            const data = await res.json()
 
-            if (!checkResult) {
-                return NextResponse.json(
-                    { error: 'بيانات الدخول غير صحيحة' },
-                    { status: 401 }
-                )
+            if (!res.ok) {
+                setError(data.error || 'فشل تسجيل الدخول')
+                setLoading(false)
+                return
             }
 
-            // لو وصلنا هنا، نعتبر الدخول ناجح (للتجربة)
-            console.log('⚠️ تم الدخول بدون التحقق من كلمة المرور (مؤقت)')
-            
-            return NextResponse.json({
-                user: {
-                    id: user.id,
-                    full_name: user.full_name,
-                    role: user.role,
-                    email: user.email,
-                    username: user.username
-                }
-            })
-        }
+            // حفظ بيانات المستخدم
+            localStorage.setItem('user', JSON.stringify(data.user))
+            localStorage.setItem('isLoggedIn', 'true')
 
-        if (!validUser) {
-            console.log('❌ كلمة المرور غير صحيحة')
-            return NextResponse.json(
-                { error: 'بيانات الدخول غير صحيحة' },
-                { status: 401 }
-            )
-        }
+            console.log('✅ تم تسجيل الدخول، سيتم التحويل...', data.user)
 
-        console.log('✅ تم التحقق من كلمة المرور بنجاح')
-
-        return NextResponse.json({
-            user: {
-                id: user.id,
-                full_name: user.full_name,
-                role: user.role,
-                email: user.email,
-                username: user.username
+            // التحويل حسب الدور
+            if (data.user.role === 'doctor') {
+                router.push('/doctor')
+            } else {
+                router.push('/assistant')
             }
-        })
-
-    } catch (error) {
-        console.error('❌ خطأ في الخادم:', error)
-        return NextResponse.json(
-            { error: 'حدث خطأ في الخادم' },
-            { status: 500 }
-        )
+        } catch (err) {
+            console.error('❌ خطأ:', err)
+            setError('حدث خطأ في الاتصال بالخادم')
+        }
+        setLoading(false)
     }
+
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+            <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
+                <div className="text-center mb-8">
+                    <div className="text-5xl mb-3">🏥</div>
+                    <h1 className="text-3xl font-bold text-gray-800">PediaCare</h1>
+                    <p className="text-gray-500 mt-1">نظام إدارة عيادة الأطفال</p>
+                </div>
+
+                <form onSubmit={handleLogin} className="space-y-5">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            اسم المستخدم أو البريد الإلكتروني
+                        </label>
+                        <input
+                            type="text"
+                            value={identifier}
+                            onChange={(e) => setIdentifier(e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                            placeholder="أدخل اسم المستخدم أو البريد"
+                            required
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            كلمة المرور
+                        </label>
+                        <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                            placeholder="أدخل كلمة المرور"
+                            required
+                        />
+                    </div>
+
+                    {error && (
+                        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                            {error}
+                        </div>
+                    )}
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition disabled:opacity-50"
+                    >
+                        {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
+                    </button>
+                </form>
+
+                <div className="mt-6 text-center text-sm text-gray-500">
+                    <p>حسابات تجريبية:</p>
+                    <p className="mt-1">
+                        <span className="font-medium">طبيب:</span> doctor / Doctor@123456
+                    </p>
+                    <p>
+                        <span className="font-medium">مساعد:</span> assistant / Assistant@123456
+                    </p>
+                </div>
+            </div>
+        </div>
+    )
 }
