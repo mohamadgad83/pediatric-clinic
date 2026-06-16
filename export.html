@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>📦 تصدير أكواد PediaCare</title>
+    <title>📦 تصدير أكواد PediaCare + التوثيق</title>
     <style>
         * {
             margin: 0;
@@ -23,7 +23,7 @@
             background: white;
             padding: 3rem 2.5rem;
             border-radius: 28px;
-            max-width: 600px;
+            max-width: 650px;
             width: 100%;
             text-align: center;
             box-shadow: 0 30px 60px rgba(0,0,0,0.4);
@@ -90,15 +90,46 @@
             font-size: 0.7rem;
             color: #475569;
         }
+        .options {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin: 1rem 0 1.5rem;
+            flex-wrap: wrap;
+        }
+        .options label {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.9rem;
+            color: #475569;
+            cursor: pointer;
+        }
+        .options input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #2563eb;
+        }
     </style>
 </head>
 <body>
     <div class="card">
         <h1>📦 PediaCare</h1>
-        <p>اضغط الزر لتصدير كل أكواد المشروع في ملف واحد</p>
+        <p>اضغط الزر لتصدير كل أكواد المشروع + التوثيق في ملف واحد</p>
+
+        <div class="options">
+            <label>
+                <input type="checkbox" id="includeDocs" checked />
+                📄 تضمين التوثيق
+            </label>
+            <label>
+                <input type="checkbox" id="includeCode" checked />
+                💻 تضمين الأكواد
+            </label>
+        </div>
 
         <button class="btn" id="exportBtn">
-            ⬇️ تصدير الأكواد
+            ⬇️ تصدير الأكواد + التوثيق
         </button>
 
         <div class="status" id="status">⏳ جاهز للتصدير</div>
@@ -106,21 +137,226 @@
         <div class="footer">
             <span class="badge">🔧 Next.js + Supabase</span>
             <span class="badge">🩺 عيادة أطفال</span>
+            <span class="badge">📄 مع التوثيق</span>
         </div>
     </div>
 
     <script>
+        // ============================================================
+        // 📄 محتوى التوثيق الكامل (documentation.html)
+        // ============================================================
+        const DOCUMENTATION_CONTENT = `
+        ========================================
+        📚 توثيق مشروع PediaCare
+        ========================================
+
+        🏥 PediaCare – نظام إدارة عيادات الأطفال
+        ----------------------------------------
+        نظام متكامل لإدارة عيادات الأطفال، مبني باستخدام Next.js 14 و Supabase،
+        مع نظام مصادقة مستقل يعتمد على clinic_profiles.
+
+        🔗 الروابط المهمة
+        -----------------
+        التطبيق: https://pediatric-clinic-psi.vercel.app
+        GitHub: https://github.com/mohamadgad83/pediatric-clinic
+        Supabase: https://app.supabase.com/project/cuchwughgvhiwgaoodib
+
+        🛠️ التقنيات المستخدمة
+        ---------------------
+        Next.js 14.2.5  →  الإطار الرئيسي
+        TypeScript 5.5.3  →  لغة البرمجة
+        Tailwind CSS 3.4.6  →  التصميم والتنسيق
+        Supabase  →  قاعدة البيانات + المصادقة
+        Vercel  →  النشر والاستضافة
+
+        📂 هيكل المشروع
+        ---------------
+        pediatric-clinic/
+        ├── app/
+        │   ├── api/login/route.ts          # API تسجيل الدخول
+        │   ├── auth/callback/route.ts      # (غير مستخدم حالياً)
+        │   ├── doctor/
+        │   │   ├── page.tsx                # لوحة تحكم الطبيب
+        │   │   ├── patients/
+        │   │   │   ├── page.tsx            # قائمة المرضى (طبيب)
+        │   │   │   ├── new/page.tsx        # إضافة مريض (طبيب)
+        │   │   │   └── [id]/page.tsx       # ملف مريض
+        │   │   └── queue/page.tsx          # قائمة الانتظار (طبيب)
+        │   ├── assistant/
+        │   │   ├── page.tsx                # لوحة تحكم المساعد
+        │   │   ├── patients/
+        │   │   │   ├── page.tsx            # قائمة المرضى (مساعد)
+        │   │   │   └── new/page.tsx        # إضافة مريض (مساعد)
+        │   │   └── queue/page.tsx          # قائمة الانتظار (مساعد)
+        │   ├── login/page.tsx              # صفحة تسجيل الدخول
+        │   ├── layout.tsx                  # التصميم الرئيسي
+        │   ├── page.tsx                    # الصفحة الرئيسية (توجيه)
+        │   └── globals.css                 # الأنماط العامة
+        ├── components/                     # مكونات مشتركة
+        ├── hooks/
+        │   └── useAuth.ts                  # Hook للمصادقة
+        ├── lib/
+        │   └── supabase.ts                 # عميل Supabase
+        ├── middleware.ts                   # حماية المسارات
+        ├── .env.local                      # متغيرات البيئة
+        ├── package.json
+        ├── next.config.js
+        └── tailwind.config.js
+
+        🗄️ هيكل قاعدة البيانات
+        ---------------------
+
+        1. جدول clinic_profiles
+        CREATE TABLE clinic_profiles (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            full_name TEXT NOT NULL,
+            role TEXT NOT NULL CHECK (role IN ('doctor', 'assistant')),
+            phone TEXT,
+            avatar_url TEXT,
+            username TEXT UNIQUE NOT NULL,
+            email TEXT UNIQUE,
+            password_hash TEXT,
+            confirmed BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMPTZ DEFAULT now(),
+            updated_at TIMESTAMPTZ DEFAULT now()
+        );
+
+        2. جدول clinic_patients
+        CREATE TABLE clinic_patients (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            name TEXT NOT NULL,
+            birth_date DATE NOT NULL,
+            gender TEXT CHECK (gender IN ('male', 'female')),
+            parent_name TEXT NOT NULL,
+            parent_phone TEXT NOT NULL,
+            parent_email TEXT,
+            address TEXT,
+            custom_fields JSONB DEFAULT '{}'::jsonb,
+            created_by UUID REFERENCES clinic_profiles(id),
+            created_at TIMESTAMPTZ DEFAULT now(),
+            updated_at TIMESTAMPTZ DEFAULT now()
+        );
+
+        3. جدول clinic_appointments
+        CREATE TABLE clinic_appointments (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            patient_id UUID NOT NULL REFERENCES clinic_patients(id) ON DELETE CASCADE,
+            appointment_date DATE NOT NULL,
+            appointment_time TIME,
+            queue_number INTEGER NOT NULL,
+            status TEXT DEFAULT 'waiting' CHECK (status IN ('waiting', 'in_clinic', 'done', 'cancelled')),
+            vital_signs JSONB DEFAULT '{}'::jsonb,
+            chief_complaint TEXT,
+            notes TEXT,
+            created_by UUID REFERENCES clinic_profiles(id),
+            created_at TIMESTAMPTZ DEFAULT now(),
+            updated_at TIMESTAMPTZ DEFAULT now()
+        );
+
+        4. جدول clinic_medical_records
+        CREATE TABLE clinic_medical_records (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            patient_id UUID NOT NULL REFERENCES clinic_patients(id) ON DELETE CASCADE,
+            appointment_id UUID REFERENCES clinic_appointments(id) ON DELETE SET NULL,
+            diagnosis TEXT NOT NULL,
+            prescription JSONB DEFAULT '[]'::jsonb,
+            notes TEXT,
+            attachments TEXT[],
+            created_by UUID REFERENCES clinic_profiles(id),
+            created_at TIMESTAMPTZ DEFAULT now(),
+            updated_at TIMESTAMPTZ DEFAULT now()
+        );
+
+        5. دالة التحقق من كلمة المرور
+        CREATE OR REPLACE FUNCTION check_password(
+            input_password TEXT,
+            stored_hash TEXT
+        )
+        RETURNS BOOLEAN AS $$
+        BEGIN
+            RETURN stored_hash = crypt(input_password, stored_hash);
+        END;
+        $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+        🔐 نظام المصادقة
+        ---------------
+        - API: app/api/login/route.ts – يستقبل identifier و password، ويتحقق من المستخدم في clinic_profiles.
+        - Middleware: middleware.ts – يتحقق من Cookies ويحمي المسارات (/doctor, /assistant).
+        - Hook: hooks/useAuth.ts – يقرأ بيانات المستخدم من localStorage.
+
+        👥 الصلاحيات
+        -----------
+        | الصلاحية                     | الطبيب | المساعد |
+        |------------------------------|--------|---------|
+        | عرض المرضى                   | ✅     | ✅      |
+        | إضافة مريض                   | ✅     | ✅      |
+        | تعديل مريض                   | ✅     | ✅      |
+        | عرض ملف مريض                 | ✅     | ✅      |
+        | إضافة سجل طبي                | ✅     | ❌      |
+        | عرض قائمة الانتظار           | ✅     | ✅      |
+        | إضافة للانتظار               | ❌     | ✅      |
+        | تحديث حالة مريض              | ✅     | ❌      |
+
+        📱 الصفحات الرئيسية
+        ------------------
+        /login                    صفحة تسجيل الدخول
+        /doctor                   لوحة تحكم الطبيب
+        /doctor/patients          قائمة المرضى
+        /doctor/patients/[id]     ملف المريض
+        /doctor/queue             قائمة الانتظار
+        /assistant                لوحة تحكم المساعد
+        /assistant/patients/new   إضافة مريض
+        /assistant/queue          قائمة الانتظار
+
+        ⚙️ إعدادات النشر (Vercel)
+        -------------------------
+        NEXT_PUBLIC_SUPABASE_URL=https://cuchwughgvhiwgaoodib.supabase.co
+        NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+        🚀 الأخطاء الشائعة وحلولها
+        --------------------------
+        1. 404 Not Found على patients → استبدل patients بـ clinic_patients
+        2. Invalid login credentials → استخدم doctor / Doctor@123456
+        3. 401 Unauthorized → تأكد من SUPABASE_SERVICE_ROLE_KEY
+        4. Failed to compile → تأكد من Interfaces في ملفات الـ Queue
+
+        🔑 الحسابات التجريبية
+        --------------------
+        طبيب: doctor / Doctor@123456
+        مساعد: assistant / Assistant@123456
+
+        📌 ملخص سريع
+        -----------
+        ✅ المشروع شغال على: https://pediatric-clinic-psi.vercel.app
+        ✅ تسجيل الدخول شغال بـ: doctor / Doctor@123456
+        ✅ قاعدة البيانات جاهزة مع الجداول المطلوبة
+        ✅ الصلاحيات مفعلة (طبيب/مساعد)
+
+        ========================================
+        📄 نهاية التوثيق
+        ========================================
+        `;
+
+        // ============================================================
+        // 🚀 زر التصدير
+        // ============================================================
         document.getElementById('exportBtn').addEventListener('click', async function() {
             const btn = this;
             const status = document.getElementById('status');
+            const includeDocs = document.getElementById('includeDocs').checked;
+            const includeCode = document.getElementById('includeCode').checked;
 
             btn.disabled = true;
             btn.textContent = '⏳ جاري التصدير...';
             status.textContent = '⏳ جاري جمع الملفات...';
             status.className = 'status loading';
 
+            let fullContent = '';
+            let fileCount = 0;
+
             try {
-                // 1. جلب قائمة الملفات من الـ API
+                // 1. قائمة الملفات المهمة
                 const fileList = [
                     'app/api/login/route.ts',
                     'app/assistant/page.tsx',
@@ -145,67 +381,56 @@
                     'tsconfig.json'
                 ];
 
-                let fullContent = '# 📦 PediaCare - Full Project Code\n\n';
+                // 2. عنوان الملف
+                fullContent += '# 📦 PediaCare - Full Project Code + Documentation\n\n';
                 fullContent += `Generated on: ${new Date().toLocaleString('ar-EG')}\n`;
                 fullContent += '=' . repeat(60) + '\n\n';
 
-                for (const file of fileList) {
-                    status.textContent = `⏳ جاري تحميل: ${file}`;
-                    
-                    try {
-                        const res = await fetch(`/${file}`);
-                        if (res.ok) {
-                            const content = await res.text();
-                            fullContent += `📁 FILE: ${file}\n`;
+                // 3. تصدير الأكواد
+                if (includeCode) {
+                    fullContent += '# 💻 Project Code\n\n';
+                    for (const file of fileList) {
+                        status.textContent = `⏳ جاري تحميل: ${file}`;
+                        try {
+                            const res = await fetch(`/${file}`);
+                            if (res.ok) {
+                                const content = await res.text();
+                                fullContent += `📁 FILE: ${file}\n`;
+                                fullContent += '=' . repeat(60) + '\n';
+                                fullContent += content;
+                                fullContent += '\n\n' + '=' . repeat(60) + '\n\n';
+                                fileCount++;
+                            } else {
+                                fullContent += `📁 FILE: ${file} (⚠️ غير موجود)\n`;
+                                fullContent += '=' . repeat(60) + '\n';
+                                fullContent += '❌ الملف غير موجود\n\n';
+                            }
+                        } catch (e) {
+                            fullContent += `📁 FILE: ${file} (⚠️ خطأ)\n`;
                             fullContent += '=' . repeat(60) + '\n';
-                            fullContent += content;
-                            fullContent += '\n\n' + '=' . repeat(60) + '\n\n';
-                        } else {
-                            fullContent += `📁 FILE: ${file} (⚠️ غير موجود)\n`;
-                            fullContent += '=' . repeat(60) + '\n';
-                            fullContent += '❌ الملف غير موجود\n\n';
+                            fullContent += `❌ خطأ: ${e.message}\n\n`;
                         }
-                    } catch (e) {
-                        fullContent += `📁 FILE: ${file} (⚠️ خطأ)\n`;
-                        fullContent += '=' . repeat(60) + '\n';
-                        fullContent += `❌ خطأ: ${e.message}\n\n`;
                     }
                 }
 
-                // 2. إضافة التوثيق في نهاية الملف
-                fullContent += '\n\n';
-                fullContent += '# 📚 توثيق المشروع\n\n';
-                fullContent += '## 🔗 الروابط المهمة\n';
-                fullContent += '- التطبيق: https://pediatric-clinic-psi.vercel.app\n';
-                fullContent += '- GitHub: https://github.com/mohamadgad83/pediatric-clinic\n';
-                fullContent += '- Supabase: https://app.supabase.com/project/cuchwughgvhiwgaoodib\n\n';
-                fullContent += '## 👥 الصلاحيات\n';
-                fullContent += '| الصلاحية | الطبيب | المساعد |\n';
-                fullContent += '|-----------|--------|---------|\n';
-                fullContent += '| عرض المرضى | ✅ | ✅ |\n';
-                fullContent += '| إضافة مريض | ✅ | ✅ |\n';
-                fullContent += '| تعديل مريض | ✅ | ✅ |\n';
-                fullContent += '| عرض ملف مريض | ✅ | ✅ |\n';
-                fullContent += '| إضافة سجل طبي | ✅ | ❌ |\n';
-                fullContent += '| عرض قائمة الانتظار | ✅ | ✅ |\n';
-                fullContent += '| إضافة للانتظار | ❌ | ✅ |\n';
-                fullContent += '| تحديث حالة مريض | ✅ | ❌ |\n\n';
-                fullContent += '## 🔑 الحسابات التجريبية\n';
-                fullContent += '- طبيب: doctor / Doctor@123456\n';
-                fullContent += '- مساعد: assistant / Assistant@123456\n';
+                // 4. إضافة التوثيق
+                if (includeDocs) {
+                    fullContent += '\n\n';
+                    fullContent += DOCUMENTATION_CONTENT;
+                }
 
-                // 3. إنشاء ملف للتحميل
+                // 5. إنشاء ملف للتحميل
                 const blob = new Blob([fullContent], { type: 'text/plain;charset=utf-8' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `pediaCare-code-${new Date().toISOString().slice(0,10)}.txt`;
+                a.download = `pediaCare-full-${new Date().toISOString().slice(0,10)}.txt`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
 
-                status.textContent = `✅ تم التصدير بنجاح! (${Math.round(blob.size / 1024)} KB)`;
+                status.textContent = `✅ تم التصدير بنجاح! (${fileCount} ملف، ${Math.round(blob.size / 1024)} KB)`;
                 status.className = 'status done';
                 btn.textContent = '✅ تم!';
 
@@ -216,7 +441,7 @@
             } finally {
                 btn.disabled = false;
                 setTimeout(() => {
-                    btn.textContent = '⬇️ تصدير الأكواد';
+                    btn.textContent = '⬇️ تصدير الأكواد + التوثيق';
                 }, 3000);
             }
         });
