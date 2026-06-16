@@ -4,23 +4,18 @@ import type { NextRequest } from 'next/server'
 export function middleware(req: NextRequest) {
     const path = req.nextUrl.pathname
 
-    // التحقق من وجود مستخدم (من الـ cookie)
     const isLoggedIn = req.cookies.get('isLoggedIn')?.value === 'true'
     
-    // المسارات العامة
     const publicPaths = ['/login', '/api/login']
     const isPublic = publicPaths.some(p => path === p || path.startsWith('/api/'))
 
-    // المسارات المحمية
     const protectedPaths = ['/doctor', '/assistant']
     const isProtected = protectedPaths.some(p => path === p || path.startsWith(p + '/'))
 
-    // لو مش مسجل ويحاول يدخل على صفحة محمية
     if (!isLoggedIn && isProtected) {
         return NextResponse.redirect(new URL('/login', req.url))
     }
 
-    // لو مسجل وجاي على login
     if (isLoggedIn && path === '/login') {
         const role = req.cookies.get('userRole')?.value || 'assistant'
         if (role === 'doctor') {
@@ -29,7 +24,6 @@ export function middleware(req: NextRequest) {
         return NextResponse.redirect(new URL('/assistant', req.url))
     }
 
-    // التحقق من الصلاحيات
     if (isLoggedIn && isProtected) {
         const role = req.cookies.get('userRole')?.value || 'assistant'
 
