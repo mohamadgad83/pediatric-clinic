@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>توثيق مشروع PediaCare</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            padding: 2rem 1rem;
+            line-height: 1.7;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: white;
+            padding: 2rem 2.5rem;
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.08);
+        }
+        h1 {
+            font-size: 2.5rem;
+            color: #0f172a;
+            border-bottom: 4px solid #2563eb;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        h2 {
+            font-size: 1.8rem;
+            color: #1e293b;
+            margin-top: 2.5rem;
+            margin-bottom: 1rem;
+            border-right: 6px solid #2563eb;
+            padding-right: 1rem;
+        }
+        h3 {
+            font-size: 1.3rem;
+            color: #334155;
+            margin-top: 1.8rem;
+            margin-bottom: 0.8rem;
+        }
+        h4 {
+            font-size: 1.1rem;
+            color: #475569;
+            margin-top: 1.2rem;
+            margin-bottom: 0.4rem;
+        }
+        p, li {
+            color: #334155;
+            margin-bottom: 0.6rem;
+        }
+        ul, ol {
+            padding-right: 2rem;
+            margin-bottom: 1rem;
+        }
+        code {
+            background: #f1f5f9;
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            color: #0f172a;
+            font-family: 'Courier New', monospace;
+            direction: ltr;
+            display: inline-block;
+        }
+        pre {
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 1.2rem 1.5rem;
+            border-radius: 14px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            margin: 1rem 0;
+            direction: ltr;
+            text-align: left;
+        }
+        pre code {
+            background: transparent;
+            color: inherit;
+            padding: 0;
+            font-size: 0.85rem;
+        }
+        .badge {
+            display: inline-block;
+            background: #2563eb;
+            color: white;
+            padding: 0.2rem 0.8rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+        .badge-green {
+            background: #16a34a;
+        }
+        .badge-yellow {
+            background: #ca8a04;
+        }
+        .badge-red {
+            background: #dc2626;
+        }
+        .table-wrap {
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+        th, td {
+            border: 1px solid #e2e8f0;
+            padding: 0.7rem 1rem;
+            text-align: right;
+        }
+        th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .file-path {
+            background: #eef2ff;
+            padding: 0.1rem 0.6rem;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #1e293b;
+            direction: ltr;
+            display: inline-block;
+        }
+        .box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 1.2rem 1.5rem;
+            margin: 1rem 0;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        @media (max-width: 700px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            .container {
+                padding: 1.2rem;
+            }
+            h1 {
+                font-size: 2rem;
+            }
+        }
+        .footer {
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid #e2e8f0;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+        .copy-btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 0.5rem 1.2rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+        .copy-btn:hover {
+            background: #1d4ed8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="docs-content">
+        <h1>🏥 PediaCare – التوثيق الكامل للمشروع</h1>
+        <p><strong>نظام إدارة عيادات الأطفال</strong> – مبني باستخدام <code>Next.js 14</code> و <code>Supabase</code>، مع نظام مصادقة مستقل.</p>
+
+        <h2>📌 نظرة عامة</h2>
+        <p><strong>PediaCare</strong> هو نظام متكامل لإدارة عيادات الأطفال، يوفر واجهات منفصلة للطبيب والمساعد، مع صلاحيات محددة لكل دور.</p>
+
+        <div class="box">
+            <p><strong>🔗 الروابط المهمة:</strong></p>
+            <ul>
+                <li><strong>التطبيق:</strong> <a href="https://pediatric-clinic-psi.vercel.app" target="_blank">https://pediatric-clinic-psi.vercel.app</a></li>
+                <li><strong>GitHub:</strong> <a href="https://github.com/mohamadgad83/pediatric-clinic" target="_blank">https://github.com/mohamadgad83/pediatric-clinic</a></li>
+                <li><strong>Supabase:</strong> <a href="https://app.supabase.com/project/cuchwughgvhiwgaoodib" target="_blank">https://app.supabase.com/project/cuchwughgvhiwgaoodib</a></li>
+            </ul>
+        </div>
+
+        <h2>🛠️ التقنيات المستخدمة</h2>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>التقنية</th><th>الإصدار</th><th>الاستخدام</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Next.js</td><td>14.2.5</td><td>الإطار الرئيسي</td></tr>
+                    <tr><td>TypeScript</td><td>5.5.3</td><td>لغة البرمجة</td></tr>
+                    <tr><td>Tailwind CSS</td><td>3.4.6</td><td>التصميم والتنسيق</td></tr>
+                    <tr><td>Supabase</td><td>latest</td><td>قاعدة البيانات + المصادقة</td></tr>
+                    <tr><td>Vercel</td><td>—</td><td>النشر والاستضافة</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2>📂 هيكل المشروع</h2>
+        <pre><code>pediatric-clinic/
+├── app/
+│   ├── api/login/route.ts          # API تسجيل الدخول
+│   ├── auth/callback/route.ts      # (غير مستخدم حالياً)
+│   ├── doctor/
+│   │   ├── page.tsx                # لوحة تحكم الطبيب
+│   │   ├── patients/
+│   │   │   ├── page.tsx            # قائمة المرضى (طبيب)
+│   │   │   ├── new/page.tsx        # إضافة مريض (طبيب)
+│   │   │   └── [id]/page.tsx       # ملف مريض
+│   │   └── queue/page.tsx          # قائمة الانتظار (طبيب)
+│   ├── assistant/
+│   │   ├── page.tsx                # لوحة تحكم المساعد
+│   │   ├── patients/
+│   │   │   ├── page.tsx            # قائمة المرضى (مساعد)
+│   │   │   └── new/page.tsx        # إضافة مريض (مساعد)
+│   │   └── queue/page.tsx          # قائمة الانتظار (مساعد)
+│   ├── login/page.tsx              # صفحة تسجيل الدخول
+│   ├── layout.tsx                  # التصميم الرئيسي
+│   ├── page.tsx                    # الصفحة الرئيسية (توجيه)
+│   └── globals.css                 # الأنماط العامة
+├── components/                     # مكونات مشتركة
+├── hooks/
+│   └── useAuth.ts                  # Hook للمصادقة
+├── lib/
+│   └── supabase.ts                 # عميل Supabase
+├── middleware.ts                   # حماية المسارات
+├── .env.local                      # متغيرات البيئة
+├── package.json
+├── next.config.js
+└── tailwind.config.js</code></pre>
+
+        <h2>🗄️ هيكل قاعدة البيانات</h2>
+
+        <h3>جدول <code>clinic_profiles</code></h3>
+        <pre><code>CREATE TABLE clinic_profiles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    full_name TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('doctor', 'assistant')),
+    phone TEXT,
+    avatar_url TEXT,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT UNIQUE,
+    password_hash TEXT,
+    confirmed BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);</code></pre>
+
+        <h3>جدول <code>clinic_patients</code></h3>
+        <pre><code>CREATE TABLE clinic_patients (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    birth_date DATE NOT NULL,
+    gender TEXT CHECK (gender IN ('male', 'female')),
+    parent_name TEXT NOT NULL,
+    parent_phone TEXT NOT NULL,
+    parent_email TEXT,
+    address TEXT,
+    custom_fields JSONB DEFAULT '{}'::jsonb,
+    created_by UUID REFERENCES clinic_profiles(id),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);</code></pre>
+
+        <h3>جدول <code>clinic_appointments</code></h3>
+        <pre><code>CREATE TABLE clinic_appointments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id UUID NOT NULL REFERENCES clinic_patients(id) ON DELETE CASCADE,
+    appointment_date DATE NOT NULL,
+    appointment_time TIME,
+    queue_number INTEGER NOT NULL,
+    status TEXT DEFAULT 'waiting' CHECK (status IN ('waiting', 'in_clinic', 'done', 'cancelled')),
+    vital_signs JSONB DEFAULT '{}'::jsonb,
+    chief_complaint TEXT,
+    notes TEXT,
+    created_by UUID REFERENCES clinic_profiles(id),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);</code></pre>
+
+        <h3>جدول <code>clinic_medical_records</code></h3>
+        <pre><code>CREATE TABLE clinic_medical_records (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id UUID NOT NULL REFERENCES clinic_patients(id) ON DELETE CASCADE,
+    appointment_id UUID REFERENCES clinic_appointments(id) ON DELETE SET NULL,
+    diagnosis TEXT NOT NULL,
+    prescription JSONB DEFAULT '[]'::jsonb,
+    notes TEXT,
+    attachments TEXT[],
+    created_by UUID REFERENCES clinic_profiles(id),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);</code></pre>
+
+        <h3>دالة التحقق من كلمة المرور</h3>
+        <pre><code>CREATE OR REPLACE FUNCTION verify_user(
+    p_identifier TEXT,
+    p_password TEXT
+)
+RETURNS TABLE(
+    user_id UUID,
+    full_name TEXT,
+    user_role TEXT,
+    user_email TEXT,
+    user_username TEXT
+) AS $$
+DECLARE user_record RECORD;
+BEGIN
+    SELECT id, full_name, role, email, username, password_hash
+    INTO user_record
+    FROM clinic_profiles
+    WHERE username = p_identifier OR email = p_identifier;
+
+    IF user_record.id IS NULL THEN RETURN; END IF;
+
+    IF user_record.password_hash = crypt(p_password, user_record.password_hash) THEN
+        user_id := user_record.id;
+        full_name := user_record.full_name;
+        user_role := user_record.role;
+        user_email := user_record.email;
+        user_username := user_record.username;
+        RETURN NEXT;
+    END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;</code></pre>
+
+        <h2>🔐 نظام المصادقة</h2>
+        <ul>
+            <li><strong>API:</strong> <span class="file-path">app/api/login/route.ts</span> – يستقبل <code>identifier</code> (username/email) و <code>password</code>، ويتحقق من المستخدم في <code>clinic_profiles</code>، ويعيد بيانات المستخدم مع Cookies.</li>
+            <li><strong>Middleware:</strong> <span class="file-path">middleware.ts</span> – يتحقق من Cookies ويحمي المسارات (<code>/doctor</code>, <code>/assistant</code>) ويدير الصلاحيات.</li>
+            <li><strong>Hook:</strong> <span class="file-path">hooks/useAuth.ts</span> – يقرأ بيانات المستخدم من <code>localStorage</code> ويوفر دالة تسجيل الخروج.</li>
+        </ul>
+
+        <h2>👥 الصلاحيات</h2>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>الصلاحية</th><th>الطبيب</th><th>المساعد</th></tr></thead>
+                <tbody>
+                    <tr><td>عرض المرضى</td><td>✅</td><td>✅</td></tr>
+                    <tr><td>إضافة مريض</td><td>✅</td><td>✅</td></tr>
+                    <tr><td>تعديل مريض</td><td>✅</td><td>✅</td></tr>
+                    <tr><td>عرض ملف مريض</td><td>✅</td><td>✅</td></tr>
+                    <tr><td>إضافة سجل طبي</td><td>✅</td><td>❌</td></tr>
+                    <tr><td>عرض قائمة الانتظار</td><td>✅</td><td>✅</td></tr>
+                    <tr><td>إضافة للانتظار</td><td>❌</td><td>✅</td></tr>
+                    <tr><td>تحديث حالة مريض</td><td>✅</td><td>❌</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2>📱 الصفحات الرئيسية</h2>
+        <ul>
+            <li><strong><span class="file-path">/login</span></strong> – صفحة تسجيل الدخول (حساب تجريبي: <code>doctor / Doctor@123456</code>)</li>
+            <li><strong><span class="file-path">/doctor</span></strong> – لوحة تحكم الطبيب مع إحصائيات وأزرار سريعة</li>
+            <li><strong><span class="file-path">/doctor/patients</span></strong> – قائمة المرضى مع بحث وإضافة</li>
+            <li><strong><span class="file-path">/doctor/patients/[id]</span></strong> – ملف المريض الكامل مع سجلاته</li>
+            <li><strong><span class="file-path">/doctor/queue</span></strong> – قائمة الانتظار مع تحديث الحالات</li>
+            <li><strong><span class="file-path">/assistant</span></strong> – لوحة تحكم المساعد</li>
+            <li><strong><span class="file-path">/assistant/patients/new</span></strong> – نموذج إضافة مريض</li>
+            <li><strong><span class="file-path">/assistant/queue</span></strong> – قائمة الانتظار (قراءة فقط) مع إضافة للانتظار</li>
+        </ul>
+
+        <h2>⚙️ إعدادات النشر</h2>
+        <h4>Vercel Environment Variables</h4>
+        <pre><code>NEXT_PUBLIC_SUPABASE_URL=https://cuchwughgvhiwgaoodib.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</code></pre>
+
+        <h4>Supabase Settings</h4>
+        <ul>
+            <li><strong>Site URL:</strong> <code>https://pediatric-clinic-psi.vercel.app</code></li>
+            <li><strong>Redirect URLs:</strong> <code>https://pediatric-clinic-psi.vercel.app/auth/callback</code></li>
+        </ul>
+
+        <h2>🚀 الأخطاء الشائعة وحلولها</h2>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>الخطأ</th><th>السبب</th><th>الحل</th></tr></thead>
+                <tbody>
+                    <tr><td><code>404 Not Found</code> على <code>patients</code></td><td>الجدول اسمه <code>clinic_patients</code></td><td>استبدل <code>patients</code> بـ <code>clinic_patients</code></td></tr>
+                    <tr><td><code>Invalid login credentials</code></td><td>كلمة المرور غلط</td><td>استخدم <code>doctor / Doctor@123456</code></td></tr>
+                    <tr><td><code>401 Unauthorized</code></td><td>الـ API مش شغال</td><td>تأكد من <code>SUPABASE_SERVICE_ROLE_KEY</code></td></tr>
+                    <tr><td><code>Failed to compile</code></td><td>خطأ TypeScript</td><td>تأكد من Interfaces في ملفات الـ Queue</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2>📝 المهام المتبقية</h2>
+        <ul>
+            <li>⬜ صفحة المواعيد (<span class="file-path">/doctor/appointments</span>)</li>
+            <li>⬜ إحصائيات متقدمة مع رسوم بيانية</li>
+            <li>⬜ تقارير PDF للسجلات الطبية</li>
+            <li>⬜ تذكيرات واتساب للمواعيد</li>
+            <li>⬜ منحنيات النمو (WHO Growth Charts)</li>
+            <li>⬜ حاسبة الجرعات للأطفال</li>
+            <li>⬜ تحسين الـ UI/UX للهواتف</li>
+            <li>⬜ اختبارات وحدة للكود</li>
+        </ul>
+
+        <h2>🧪 البيانات التجريبية</h2>
+        <div class="box">
+            <p><strong>👨‍⚕️ الطبيب:</strong> <code>doctor</code> / <code>Doctor@123456</code> (دور: <code>doctor</code>)</p>
+            <p><strong>👨‍💻 المساعد:</strong> <code>assistant</code> / <code>Assistant@123456</code> (دور: <code>assistant</code>)</p>
+            <p><strong>📌 ملاحظة:</strong> يمكن إضافة المرضى التجريبيين من خلال واجهة المستخدم.</p>
+        </div>
+
+        <h2>📌 ملخص سريع</h2>
+        <ul>
+            <li>✅ <strong>المشروع شغال</strong> على <a href="https://pediatric-clinic-psi.vercel.app" target="_blank">https://pediatric-clinic-psi.vercel.app</a></li>
+            <li>✅ <strong>تسجيل الدخول</strong> شغال بـ <code>doctor / Doctor@123456</code></li>
+            <li>✅ <strong>قاعدة البيانات</strong> جاهزة مع الجداول المطلوبة</li>
+            <li>✅ <strong>الصلاحيات</strong> مفعلة (طبيب/مساعد)</li>
+            <li>⚠️ <strong>بعض الصفحات</strong> محتاجة تعديل في الاستعلامات (تأكد من أسماء الجداول)</li>
+        </ul>
+
+        <div class="footer">
+            <p>📄 تم إنشاء هذا التوثيق تلقائياً بواسطة <strong>AI Assistant</strong> – آخر تحديث: يونيو 2026</p>
+            <p style="margin-top:0.5rem; font-size:0.8rem; color:#94a3b8;">
+                يمكنك استخدام هذا الملف كمرجع سريع، أو مشاركته مع فريق التطوير.
+            </p>
+        </div>
+    </div>
+
+    <div style="text-align:center; margin-top:2rem;">
+        <button class="copy-btn" onclick="copyDocs()">📋 نسخ كل التوثيق</button>
+    </div>
+
+    <script>
+        function copyDocs() {
+            const content = document.getElementById('docs-content').innerHTML;
+            const fullHTML = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>توثيق PediaCare</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',sans-serif;background:#f8fafc;color:#1e293b;padding:2rem 1rem;line-height:1.7}
+.container{max-width:1100px;margin:0 auto;background:white;padding:2rem 2.5rem;border-radius:24px;box-shadow:0 20px 60px rgba(0,0,0,0.08)}
+h1{font-size:2.5rem;color:#0f172a;border-bottom:4px solid #2563eb;padding-bottom:0.5rem;margin-bottom:1.5rem}
+h2{font-size:1.8rem;color:#1e293b;margin-top:2.5rem;margin-bottom:1rem;border-right:6px solid #2563eb;padding-right:1rem}
+h3{font-size:1.3rem;color:#334155;margin-top:1.8rem;margin-bottom:0.8rem}
+h4{font-size:1.1rem;color:#475569;margin-top:1.2rem;margin-bottom:0.4rem}
+p,li{color:#334155;margin-bottom:0.6rem}
+ul,ol{padding-right:2rem;margin-bottom:1rem}
+code{background:#f1f5f9;padding:0.2rem 0.6rem;border-radius:6px;font-size:0.9rem;color:#0f172a;font-family:'Courier New',monospace;direction:ltr;display:inline-block}
+pre{background:#0f172a;color:#e2e8f0;padding:1.2rem 1.5rem;border-radius:14px;overflow-x:auto;font-size:0.85rem;line-height:1.6;margin:1rem 0;direction:ltr;text-align:left}
+pre code{background:transparent;color:inherit;padding:0;font-size:0.85rem}
+.badge{display:inline-block;background:#2563eb;color:white;padding:0.2rem 0.8rem;border-radius:999px;font-size:0.75rem;font-weight:600;margin-left:0.5rem}
+.badge-green{background:#16a34a}
+.badge-yellow{background:#ca8a04}
+.badge-red{background:#dc2626}
+.table-wrap{overflow-x:auto;margin:1rem 0}
+table{width:100%;border-collapse:collapse;font-size:0.95rem}
+th,td{border:1px solid #e2e8f0;padding:0.7rem 1rem;text-align:right}
+th{background:#f1f5f9;font-weight:600}
+.file-path{background:#eef2ff;padding:0.1rem 0.6rem;border-radius:6px;font-family:monospace;font-size:0.85rem;color:#1e293b;direction:ltr;display:inline-block}
+.box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:1.2rem 1.5rem;margin:1rem 0}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+@media(max-width:700px){.grid-2{grid-template-columns:1fr}.container{padding:1.2rem}h1{font-size:2rem}}
+.footer{margin-top:3rem;padding-top:1.5rem;border-top:2px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:0.9rem}
+.copy-btn{background:#2563eb;color:white;border:none;padding:0.5rem 1.2rem;border-radius:8px;cursor:pointer;font-size:0.85rem;margin-top:0.5rem}
+.copy-btn:hover{background:#1d4ed8}
+</style>
+</head>
+<body>
+<div class="container">
+${content}
+</div>
+</body>
+</html>`;
+            navigator.clipboard.writeText(fullHTML).then(() => {
+                alert('✅ تم نسخ التوثيق كـ HTML! يمكنك لصقه في ملف documentation.html');
+            }).catch(() => {
+                alert('❌ فشل النسخ، حاول تحديد النص ونسخه يدوياً.');
+            });
+        }
+    </script>
+</body>
+</html>
