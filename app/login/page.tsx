@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
-    const [username, setUsername] = useState('doctor')
+    const [identifier, setIdentifier] = useState('doctor')
     const [password, setPassword] = useState('Doctor@123456')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
@@ -19,7 +19,7 @@ export default function LoginPage() {
             const res = await fetch('/api/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({ identifier, password })
             })
 
             const data = await res.json()
@@ -56,14 +56,14 @@ export default function LoginPage() {
                 <form onSubmit={handleLogin} className="space-y-5">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                            اسم المستخدم
+                            اسم المستخدم أو البريد الإلكتروني
                         </label>
                         <input
                             type="text"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
+                            value={identifier}
+                            onChange={(e) => setIdentifier(e.target.value)}
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                            placeholder="أدخل اسم المستخدم"
+                            placeholder="أدخل اسم المستخدم أو البريد"
                             required
                         />
                     </div>
@@ -100,10 +100,10 @@ export default function LoginPage() {
                 <div className="mt-6 text-center text-sm text-gray-500">
                     <p>حسابات تجريبية:</p>
                     <p className="mt-1">
-                        <span className="font-medium">طبيب:</span> doctor / Doctor@123456
+                        <span className="font-medium">طبيب:</span> doctor أو doctor@clinic.com / Doctor@123456
                     </p>
                     <p>
-                        <span className="font-medium">مساعد:</span> assistant / Assistant@123456
+                        <span className="font-medium">مساعد:</span> assistant أو assistant@clinic.com / Assistant@123456
                     </p>
                 </div>
             </div>
