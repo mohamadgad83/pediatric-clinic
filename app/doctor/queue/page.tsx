@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import { Clock, User, Phone, RefreshCw, CheckCircle, XCircle, UserCheck, ChevronLeft } from 'lucide-react'
 
-// ✅ تعريف الـ Interface بشكل صحيح
+// ✅ تعريف الـ Interface
 interface QueueItem {
     id: string
     patient_id: string
@@ -41,7 +41,7 @@ export default function DoctorQueuePage() {
         fetchQueue()
     }, [user, loading, router])
 
-    // ✅ دالة جلب قائمة الانتظار - تم تعديلها
+    // ✅ دالة جلب البيانات - تم تعديلها
     const fetchQueue = async () => {
         setLoadingQueue(true)
         const todayStr = new Date().toISOString().split('T')[0]
@@ -67,7 +67,7 @@ export default function DoctorQueuePage() {
             .order('queue_number', { ascending: true })
 
         if (!error && data) {
-            // ✅ إعادة تشكيل البيانات بشكل صحيح
+            // ✅ إعادة تشكيل البيانات - دي أهم خطوة
             const formattedData: QueueItem[] = data.map((item: any) => ({
                 id: item.id,
                 patient_id: item.patient_id,
