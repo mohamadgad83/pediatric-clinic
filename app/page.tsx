@@ -10,15 +10,19 @@ export default function HomePage() {
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
         const userData = localStorage.getItem('user')
         
+        console.log('🔍 التحقق من حالة الدخول:', { isLoggedIn, userData })
+        
         if (isLoggedIn && userData) {
             try {
                 const user = JSON.parse(userData)
+                console.log('👤 المستخدم:', user)
                 if (user.role === 'doctor') {
                     router.push('/doctor')
                 } else {
                     router.push('/assistant')
                 }
-            } catch {
+            } catch (e) {
+                console.error('❌ خطأ في قراءة البيانات:', e)
                 router.push('/login')
             }
         } else {
