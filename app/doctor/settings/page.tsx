@@ -10,8 +10,5 @@ useEffect(() => {
         setConsultationPrice(data.consultation_price);
       }
     }
-   fetchSettings();
-    };
-
     fetchSettings();
-  }, [user, loading, router]); // ✅ اعتماديات الـ useEffect الصحيحة
+  }, []);
