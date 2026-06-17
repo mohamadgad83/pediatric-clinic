@@ -69,11 +69,13 @@ export default function DoctorDashboard() {
     }, [user, loading, router])
 
     // ✅ تسجيل الخروج - الطريقة الصحيحة
-    const handleLogout = () => {
-        localStorage.removeItem('user')
-        localStorage.removeItem('isLoggedIn')
-        router.push('/login')
-    }
+   const handleLogout = () => {
+    // حذف البيانات من localStorage
+    localStorage.removeItem('user')
+    localStorage.removeItem('isLoggedIn')
+    // التوجيه لصفحة login
+    router.push('/login')
+}
 
     if (loading) {
         return (
