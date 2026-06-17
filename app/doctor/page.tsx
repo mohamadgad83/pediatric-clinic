@@ -1,212 +1,431 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
-import { useAuth } from '@/hooks/useAuth'
-import { useRouter } from 'next/navigation'
-import { Users, Calendar, Clock, Activity, LogOut } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { 
+  getTodayQueue, 
+  updateAppointmentStatus, 
+  saveMedicalConsultation 
+} from '@/app/actions/clinicActions'
+import { 
+  UserCheck, 
+  Users, 
+  CheckCircle, 
+  Clock, 
+  FileText, 
+  FileMedical, 
+  Plus, 
+  Trash2, 
+  Save, 
+  AlertCircle,
+  Printer,
+  Sparkles
+} from 'lucide-react'
 
-interface Stats {
-    totalPatients: number
-    todayAppointments: number
-    waitingQueue: number
-    criticalAlerts: number
+interface Patient {
+  id: string
+  name: string
+  gender: string
+  birth_date: string
+  parent_phone: string
+}
+
+interface Appointment {
+  id: string
+  patient_id: string
+  visit_date: string
+  status: string
+  queue_number: number
+  notes: string
+  weight?: number
+  height?: number
+  temperature?: number
+  clinic_patients: Patient | null
+}
+
+interface Medication {
+  name: string
+  dosage: string    // جرعة محددة: مثل 5 مل
+  frequency: string // تكرار: مثل كل 8 ساعات
+  duration: string  // مدة: مثل 5 أيام
 }
 
 export default function DoctorDashboard() {
-    const { user, loading } = useAuth()
-    const router = useRouter()
-    const [stats, setStats] = useState<Stats>({
-        totalPatients: 0,
-        todayAppointments: 0,
-        waitingQueue: 0,
-        criticalAlerts: 0
-    })
-    const [recentPatients, setRecentPatients] = useState<any[]>([])
+  const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<'waiting' | 'completed'>('waiting')
+  
+  // حالات الكشف الحالي النشط
+  const [currentAppointment, setCurrentAppointment] = useState<Appointment | null>(null)
+  const [diagnosis, setDiagnosis] = useState('')
+  const [doctorNotes, setDoctorNotes] = useState('')
+  const [medications, setMedications] = useState<Medication[]>([])
+  const [newMed, setNewMed] = useState<Medication>({ name: '', dosage: '', frequency: '', duration: '' })
+  const [customFields, setCustomFields] = useState<{ [key: string]: string }>({})
+  const [isSaving, setIsSaving] = useState(false)
 
-    useEffect(() => {
-        if (!loading && !user) {
-            router.push('/login')
-            return
-        }
+  // جلب الطابور اليومي الآمن من السيرفر
+  const fetchQueueData = async () => {
+    setLoading(true)
+    const res = await getTodayQueue()
+    if (res.success && res.data) {
+      setAppointments(res.data as any)
+    } else {
+      console.error(res.error)
+      alert('فشل في جلب البيانات بطريقة آمنة: ' + res.error)
+    }
+    setLoading(false)
+  }
 
-        const fetchStats = async () => {
-            // عدد المرضى الكلي
-            const { count: patientsCount } = await supabase
-                .from('clinic_patients')
-                .select('*', { count: 'exact', head: true })
+  useEffect(() => {
+    fetchQueueData()
+  }, [])
 
-            // مواعيد اليوم
-            const today = new Date().toISOString().split('T')[0]
-            const { count: todayCount } = await supabase
-                .from('clinic_appointments')
-                .select('*', { count: 'exact', head: true })
-                .eq('appointment_date', today)
+  // دالة حساب عمر الطفل الطبية الدقيقة (بالأيام والشهور والسنوات)
+  const calculatePediatricAge = (birthDateString: string) => {
+    if (!birthDateString) return 'غير مسجل'
+    const birthDate = new Date(birthDateString)
+    const today = new Date()
 
-            // قائمة الانتظار
-            const { count: waitingCount } = await supabase
-                .from('clinic_appointments')
-                .select('*', { count: 'exact', head: true })
-                .eq('status', 'waiting')
+    let years = today.getFullYear() - birthDate.getFullYear()
+    let months = today.getMonth() - birthDate.getMonth()
+    let days = today.getDate() - birthDate.getDate()
 
-            // أحدث المرضى
-            const { data: recent } = await supabase
-                .from('clinic_patients')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(5)
-
-            setStats({
-                totalPatients: patientsCount || 0,
-                todayAppointments: todayCount || 0,
-                waitingQueue: waitingCount || 0,
-                criticalAlerts: 0
-            })
-            setRecentPatients(recent || [])
-        }
-
-        fetchStats()
-    }, [user, loading, router])
-
-    // ✅ تسجيل الخروج - الطريقة الصحيحة
-   const handleLogout = () => {
-    // حذف البيانات من localStorage
-    localStorage.removeItem('user')
-    localStorage.removeItem('isLoggedIn')
-    // التوجيه لصفحة login
-    router.push('/login')
-}
-
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center">
-                    <div className="text-4xl mb-4">🔄</div>
-                    <p className="text-gray-500">جاري التحميل...</p>
-                </div>
-            </div>
-        )
+    if (days < 0) {
+      months--
+      const lastMonth = new Date(today.getFullYear(), today.getMonth(), 0)
+      days += lastMonth.getDate()
     }
 
-    const statCards = [
-        { title: 'إجمالي المرضى', value: stats.totalPatients, icon: Users, color: 'bg-blue-500' },
-        { title: 'مواعيد اليوم', value: stats.todayAppointments, icon: Calendar, color: 'bg-green-500' },
-        { title: 'قائمة الانتظار', value: stats.waitingQueue, icon: Clock, color: 'bg-yellow-500' },
-        { title: 'تنبيهات حرجة', value: stats.criticalAlerts, icon: Activity, color: 'bg-red-500' },
-    ]
+    if (months < 0) {
+      years--
+      months += 12
+    }
 
-    return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <header className="bg-white shadow-sm border-b">
-                <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-                    <div className="flex items-center gap-4">
-                        <h1 className="text-2xl font-bold text-gray-800">🏥 PediaCare</h1>
-                        <span className="bg-blue-100 text-blue-700 text-xs px-3 py-1 rounded-full">طبيب</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <span className="text-gray-600">{user?.full_name || 'دكتور'}</span>
-                        <button
-                            onClick={handleLogout}
-                            className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition"
-                        >
-                            <LogOut className="w-4 h-4" />
-                            تسجيل خروج
-                        </button>
-                    </div>
-                </div>
-            </header>
+    if (years === 0 && months === 0) return `${days} يوم (حديث الولادة)`
+    if (years === 0) return `${months} شهر و ${days} يوم`
+    return `${years} سنة و ${months} شهر`
+  }
 
-            <div className="max-w-7xl mx-auto p-6">
-                {/* Welcome */}
-                <div className="mb-8">
-                    <h2 className="text-3xl font-bold text-gray-800">
-                        مرحباً {user?.full_name || 'دكتور'} 👋
-                    </h2>
-                    <p className="text-gray-500 mt-1">لوحة تحكم عيادة الأطفال</p>
-                </div>
+  const filteredAppointments = appointments.filter(app => {
+    if (activeTab === 'waiting') return app.status === 'waiting' || app.status === 'checking'
+    return app.status === 'completed'
+  })
 
-                {/* Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    {statCards.map((stat, index) => (
-                        <div key={index} className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-gray-500 text-sm">{stat.title}</p>
-                                    <p className="text-3xl font-bold mt-1">{stat.value}</p>
-                                </div>
-                                <div className={`${stat.color} p-3 rounded-xl text-white`}>
-                                    <stat.icon className="w-6 h-6" />
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+  // بدء كشف طبي جديد وحفظ الحالة في السيرفر
+  const handleStartConsultation = async (appointment: Appointment) => {
+    setCurrentAppointment(appointment)
+    setDiagnosis('')
+    setDoctorNotes('')
+    setMedications([])
+    setCustomFields({})
+    
+    // تحديث الحالة على السيرفر لتصبح "جاري الفحص"
+    await updateAppointmentStatus(appointment.id, 'checking')
+    // تحديث الحالة محلياً فقط للمظهر دون الحاجة لعمل رندر كامل
+    setAppointments(prev => prev.map(a => a.id === appointment.id ? { ...a, status: 'checking' } : a))
+  }
 
-                {/* Recent Patients */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-semibold">📋 آخر المرضى المسجلين</h3>
-                        <button
-                            onClick={() => router.push('/doctor/patients')}
-                            className="text-blue-600 hover:text-blue-700 text-sm"
-                        >
-                            عرض الكل →
-                        </button>
-                    </div>
-                    {recentPatients.length === 0 ? (
-                        <p className="text-gray-400 text-center py-8">لا يوجد مرضى مسجلين بعد</p>
-                    ) : (
-                        <div className="divide-y">
-                            {recentPatients.map((patient) => (
-                                <div key={patient.id} className="py-3 flex justify-between items-center">
-                                    <div>
-                                        <p className="font-medium">{patient.name}</p>
-                                        <p className="text-sm text-gray-500">ولي الأمر: {patient.parent_name}</p>
-                                    </div>
-                                    <button
-                                        onClick={() => router.push(`/doctor/patients/${patient.id}`)}
-                                        className="text-blue-600 hover:text-blue-700 text-sm"
-                                    >
-                                        عرض
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
+  // إضافة دواء مهيكل للروشتة
+  const handleAddMedication = () => {
+    if (!newMed.name.trim() || !newMed.dosage.trim()) {
+      alert('يرجى كتابة اسم الدواء والجرعة على الأقل لضمان سلامة الطفل.')
+      return
+    }
+    setMedications([...medications, newMed])
+    setNewMed({ name: '', dosage: '', frequency: '', duration: '' })
+  }
 
-                {/* Quick Actions */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-                    <button
-                        onClick={() => router.push('/doctor/patients')}
-                        className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition text-center"
-                    >
-                        <div className="text-2xl mb-2">👶</div>
-                        <p className="text-sm font-medium">المرضى</p>
-                    </button>
-                    <button
-                        onClick={() => router.push('/doctor/queue')}
-                        className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition text-center"
-                    >
-                        <div className="text-2xl mb-2">📋</div>
-                        <p className="text-sm font-medium">قائمة الانتظار</p>
-                    </button>
-                    <button
-                        onClick={() => router.push('/doctor/patients/new')}
-                        className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition text-center"
-                    >
-                        <div className="text-2xl mb-2">➕</div>
-                        <p className="text-sm font-medium">إضافة مريض</p>
-                    </button>
-                    <button
-                        className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition text-center opacity-50 cursor-not-allowed"
-                    >
-                        <div className="text-2xl mb-2">📊</div>
-                        <p className="text-sm font-medium">تقارير (قريباً)</p>
-                    </button>
-                </div>
-            </div>
+  // حذف دواء من الروشتة
+  const handleRemoveMedication = (index: number) => {
+    setMedications(medications.filter((_, i) => i !== index))
+  }
+
+  // حفظ الكشف وإنهاء الجلسة بأمان تام
+  const handleSaveAndComplete = async () => {
+    if (!currentAppointment) return
+    if (!diagnosis.trim()) {
+      alert('التشخيص الطبي حقل إلزامي لإنهاء حالة الطفل.')
+      return
+    }
+
+    setIsSaving(true)
+    const result = await saveMedicalConsultation({
+      appointmentId: currentAppointment.id,
+      patientId: currentAppointment.patient_id,
+      diagnosis,
+      notes: doctorNotes,
+      prescriptions: medications,
+      customFields
+    })
+
+    if (result.success) {
+      alert('تم حفظ السجل الطبي والروشتة بنجاح كامل على السيرفر الآمن!')
+      // تفعيل ميزة الطباعة التلقائية الفورية للروشتة إذا أردت
+      window.print() 
+      setCurrentAppointment(null)
+      fetchQueueData()
+    } else {
+      alert('خطأ أثناء حفظ الكشف: ' + result.error)
+    }
+    setIsSaving(false)
+  }
+
+  return (
+    <div className="p-6 bg-slate-50 min-h-screen text-right" dir="rtl">
+      
+      {/* الجزء العلوي - ترويسة اللوحة والعدادات */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 print:hidden">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-800 flex items-center gap-2">
+            <UserCheck className="text-blue-600 h-8 w-8" /> لوحة تحكم الطبيب المؤمنة <Sparkles className="text-amber-500 h-5 w-5" />
+          </h1>
+          <p className="text-slate-500 mt-1 text-sm">تدار هذه اللوحة بالكامل عبر خوادم آمنة (Server Actions) لحماية البيانات الطبية.</p>
         </div>
-    )
+        
+        <div className="flex gap-4 w-full md:w-auto">
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center gap-4 flex-1 md:flex-initial">
+            <div className="p-3 bg-amber-50 text-amber-600 rounded-lg"><Clock /></div>
+            <div>
+              <div className="text-2xl font-bold text-slate-800">{appointments.filter(a => a.status !== 'completed').length}</div>
+              <div className="text-xs text-slate-400">في الانتظار</div>
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center gap-4 flex-1 md:flex-initial">
+            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg"><CheckCircle /></div>
+            <div>
+              <div className="text-2xl font-bold text-slate-800">{appointments.filter(a => a.status === 'completed').length}</div>
+              <div className="text-xs text-slate-400">الحالات المكتملة</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* شاشة العرض الرئيسية لتقسيم الطابور والكشف */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* العمود الأيمن - طابور الأطفال اليومي (مخفي أثناء الطباعة) */}
+        <div className="lg:col-span-1 bg-white p-4 rounded-2xl shadow-sm border border-slate-100 h-fit print:hidden">
+          <div className="flex border-b border-slate-100 mb-4">
+            <button 
+              className={`flex-1 pb-3 font-semibold text-sm transition-all ${activeTab === 'waiting' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-400'}`}
+              onClick={() => setActiveTab('waiting')}
+            >
+              قائمة الانتظار اليومية
+            </button>
+            <button 
+              className={`flex-1 pb-3 font-semibold text-sm transition-all ${activeTab === 'completed' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-400'}`}
+              onClick={() => setActiveTab('completed')}
+            >
+              الحالات المكتملة
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-8 text-slate-400 animate-pulse">جاري جلب الطابور بأمان...</div>
+          ) : filteredAppointments.length === 0 ? (
+            <div className="text-center py-12 text-slate-400 flex flex-col items-center justify-center gap-2">
+              <Users className="h-8 w-8 text-slate-300" />
+              <span className="text-sm">لا يوجد أطفال في هذه القائمة حالياً.</span>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+              {filteredAppointments.map((app) => (
+                <div 
+                  key={app.id} 
+                  className={`p-4 rounded-xl border transition-all ${currentAppointment?.id === app.id ? 'border-blue-500 bg-blue-50/40 shadow-sm' : 'border-slate-100 bg-slate-50/50 hover:bg-slate-50'}`}
+                >
+                  <div className="flex justify-between items-start">
+                    <span className="bg-slate-200 text-slate-700 font-bold px-2.5 py-0.5 rounded-full text-xs">
+                      رقم {app.queue_number}
+                    </span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${app.status === 'checking' ? 'bg-amber-100 text-amber-700 animate-pulse' : app.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
+                      {app.status === 'checking' ? 'جاري الفحص' : app.status === 'completed' ? 'مكتمل' : 'ينتظر'}
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-slate-800 mt-2 text-base">{app.clinic_patients?.name || 'اسم غير معروف'}</h3>
+                  <div className="text-xs text-slate-500 space-y-1 mt-1.5">
+                    <div>العمر الطبي: {app.clinic_patients?.birth_date ? calculatePediatricAge(app.clinic_patients.birth_date) : 'غير مسجل'}</div>
+                    {(app.weight || app.temperature) && (
+                      <div className="flex gap-3 text-slate-600 bg-white p-2 rounded border border-slate-100 mt-1.5">
+                        {app.weight && <span>الوزن: <b className="text-blue-600">{app.weight} كجم</b></span>}
+                        {app.temperature && <span>الحرارة: <b className="text-rose-600">{app.temperature} °م</b></span>}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {app.status !== 'completed' && currentAppointment?.id !== app.id && (
+                    <button 
+                      onClick={() => handleStartConsultation(app)}
+                      className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 rounded-lg transition-colors flex items-center justify-center gap-1"
+                    >
+                      <FileMedical className="h-3.5 w-3.5" /> بدء الفحص والروشتة
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* العمود الأيسر - شاشة الفحص ومعاينة المريض الحالي + الروشتة الجاهزة للطباعة */}
+        <div className="lg:col-span-2">
+          {currentAppointment ? (
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-6 print:border-none print:p-0">
+              
+              {/* قسم بيانات المريض والطفل (يظهر أيضاً في الطباعة كترويسة روشتة) */}
+              <div className="border-b-2 border-slate-100 pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <span className="text-xs font-bold text-blue-600 uppercase tracking-wide print:hidden">الملف الطبي الحالي للطفل</span>
+                  <h2 className="text-2xl font-bold text-slate-800 mt-0.5">{currentAppointment.clinic_patients?.name}</h2>
+                  <p className="text-xs text-slate-500 mt-1">
+                    الجنس: {currentAppointment.clinic_patients?.gender === 'male' ? 'ذكر' : 'أنثى'} | 
+                    العمر الحالي: {currentAppointment.clinic_patients?.birth_date && calculatePediatricAge(currentAppointment.clinic_patients.birth_date)}
+                  </p>
+                </div>
+                <div className="text-right text-xs bg-slate-50 p-3 rounded-xl border border-slate-100 min-w-[150px]">
+                  <div className="font-semibold text-slate-500">العلامات الحيوية للزيارة:</div>
+                  <div className="mt-1 space-y-0.5 font-medium text-slate-700">
+                    <div>الحرارة: {currentAppointment.temperature ? `${currentAppointment.temperature} °م` : 'لم تقاس'}</div>
+                    <div>الوزن: {currentAppointment.weight ? `${currentAppointment.weight} كجم` : 'لم يقاس'}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* حقل التشخيص الطبي الرئيسي */}
+              <div className="print:block">
+                <label className="block text-sm font-semibold text-slate-700 mb-2 print:text-base print:font-bold">التشخيص الطبي (Diagnosis) *</label>
+                <textarea 
+                  rows={2}
+                  className="w-full p-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm print:border-none print:p-0 print:text-slate-800"
+                  placeholder="اكتب التشخيص التفصيلي لحالة الطفل هنا..."
+                  value={diagnosis}
+                  onChange={(e) => setDiagnosis(e.target.value)}
+                />
+              </div>
+
+              {/* حقل بناء الروشتة العلاجية المهيكلة والمؤمنة */}
+              <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-200/60 space-y-4 print:bg-white print:border-none print:p-0">
+                <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1.5 print:text-base print:font-bold">
+                  <FileText className="text-blue-600 h-4 w-4 print:hidden" /> العلاجات والأدوية الموصوفة (Prescription)
+                </h3>
+                
+                {/* حقول إدخال الدواء الجديد (تختفي تماماً أثناء الطباعة) */}
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 bg-white p-3 rounded-lg border border-slate-100 print:hidden">
+                  <input 
+                    type="text" placeholder="اسم الدواء (مثل: Brufen)" 
+                    className="p-2 border rounded-lg text-xs w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    value={newMed.name} onChange={(e) => setNewMed({...newMed, name: e.target.value})}
+                  />
+                  <input 
+                    type="text" placeholder="الجرعة (مثل: 3 مل)" 
+                    className="p-2 border rounded-lg text-xs w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    value={newMed.dosage} onChange={(e) => setNewMed({...newMed, dosage: e.target.value})}
+                  />
+                  <input 
+                    type="text" placeholder="التكرار (مثل: كل 12 ساعة)" 
+                    className="p-2 border rounded-lg text-xs w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    value={newMed.frequency} onChange={(e) => setNewMed({...newMed, frequency: e.target.value})}
+                  />
+                  <div className="flex gap-1">
+                    <input 
+                      type="text" placeholder="المدة (٤ أيام)" 
+                      className="p-2 border rounded-lg text-xs w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      value={newMed.duration} onChange={(e) => setNewMed({...newMed, duration: e.target.value})}
+                    />
+                    <button 
+                      type="button" onClick={handleAddMedication}
+                      className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg transition-colors flex items-center justify-center shrink-0"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* جدول عرض الأدوية المنظم والجاهز للطباعة بدقة وسلاسة */}
+                {medications.length > 0 ? (
+                  <div className="bg-white rounded-lg border border-slate-100 overflow-hidden text-xs print:border-none">
+                    <table className="w-full text-right border-collapse">
+                      <thead>
+                        <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 print:bg-slate-50">
+                          <th className="p-2 text-sm">اسم الدواء</th>
+                          <th className="p-2 text-sm">الجرعة</th>
+                          <th className="p-2 text-sm">التكرار اليومي</th>
+                          <th className="p-2 text-sm">المدة</th>
+                          <th className="p-2 text-center w-12 print:hidden">حذف</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-sm">
+                        {medications.map((med, index) => (
+                          <tr key={index} className="hover:bg-slate-50/80">
+                            <td className="p-2 font-bold text-slate-800">{med.name}</td>
+                            <td className="p-2 text-slate-700">{med.dosage}</td>
+                            <td className="p-2 text-slate-700">{med.frequency}</td>
+                            <td className="p-2 text-slate-700">{med.duration}</td>
+                            <td className="p-2 text-center print:hidden">
+                              <button type="button" onClick={() => handleRemoveMedication(index)} className="text-rose-500 hover:text-rose-700">
+                                <Trash2 className="h-3.5 w-3.5 mx-auto" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-xs text-slate-400 border border-dashed border-slate-200 rounded-lg bg-white print:hidden">
+                    لم تقم بصرف أو تركيب أدوية لهذه الروشتة حتى الآن.
+                  </div>
+                )}
+              </div>
+
+              {/* ملاحظات عامة وإرشادات لولي الأمر */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2 print:text-base print:font-bold">تعليمات وإرشادات الطبيب للمتابعة</label>
+                <textarea 
+                  rows={2}
+                  className="w-full p-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm print:border-none print:p-0 print:text-slate-700"
+                  placeholder="تعليمات الراحة، نوع الطعام، أو موعد الاستشارة..."
+                  value={doctorNotes}
+                  onChange={(e) => setDoctorNotes(e.target.value)}
+                />
+              </div>
+
+              {/* أزرار إنهاء الكشف الطبي (تختفي تماماً عند الطباعة) */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 print:hidden">
+                <button 
+                  onClick={() => setCurrentAppointment(null)}
+                  className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-xl text-sm font-medium transition-colors"
+                >
+                  إلغاء
+                </button>
+                <button 
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-semibold transition-colors flex items-center gap-1"
+                >
+                  <Printer className="h-4 w-4" /> معاينة طباعة الروشتة
+                </button>
+                <button 
+                  onClick={handleSaveAndComplete}
+                  disabled={isSaving}
+                  className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white px-5 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-1.5 shadow-sm shadow-emerald-100"
+                >
+                  <Save className="h-4 w-4" /> {isSaving ? 'جاري الحفظ المشفر...' : 'حفظ الكشف وإنهاء الزيارة'}
+                </button>
+              </div>
+
+            </div>
+          ) : (
+            <div className="bg-white p-12 rounded-2xl shadow-sm border border-slate-100 text-center flex flex-col items-center justify-center min-h-[420px] text-slate-400 gap-3">
+              <div className="p-4 bg-blue-50 text-blue-500 rounded-full"><AlertCircle className="h-8 w-8" /></div>
+              <div>
+                <h3 className="font-bold text-slate-700 text-lg">لم يتم اختيار حالة طفل حالياً</h3>
+                <p className="text-sm text-slate-400 mt-1 max-w-sm mx-auto">يرجى الضغط على زر "بدء الفحص والروشتة" من طابور الانتظار الأيمن لعرض الملف وكتابة الجرعات.</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+      </div>
+    </div>
+  )
 }
