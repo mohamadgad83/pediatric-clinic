@@ -4,10 +4,38 @@ import { useState, useEffect } from 'react'
 import { 
   Clock, CheckCircle, Printer, Save, UserCheck, FileText, Sparkles,
   User, Activity, Stethoscope, HeartPulse, Search, Scale, Thermometer, 
-  ShieldAlert, Trash2, Settings, Plus, Ruler, Eye, X
+  ShieldAlert, Trash2, Settings, Plus, Ruler, Eye, X, DollarSign, TrendingUp, Calendar, UserPlus, History
 } from 'lucide-react'
 
-// واجهات البيانات
+// --- واجهات البيانات المتكاملة ---
+interface Visit {
+  date: string;
+  complaint: string;
+  diagnosis: string;
+  prescription: string;
+  weight: number;
+}
+
+interface Patient {
+  id: string;
+  name: string;
+  phone: string;
+  age: string;
+  weight: number;
+  height: number;
+  temp: string;
+  type: "كشف جديد" | "إعادة واستشارة";
+  history: Visit[];
+  vaccines: { name: string; status: "تمت" | "مؤجلة" };
+}
+
+interface Expense {
+  id: string;
+  title: string;
+  amount: number;
+  category: string;
+}
+
 interface Drug {
   id: string;
   name: string;
@@ -17,498 +45,496 @@ interface Drug {
   instruction: string;
 }
 
-interface DiagnosisPreset {
-  id: string;
-  title: string;
-  eng: string;
-}
+// --- قاعدة البيانات الأولية الشاملة ---
+const initialPatients: Patient[] = [
+  {
+    id: "p1", name: "يوسف أحمد محمود", phone: "01012345678", age: "سنتان", weight: 12, height: 85, temp: "38.5", type: "كشف جديد",
+    history: [
+      { date: "2026-04-12", complaint: "Severe diarrhea", diagnosis: "Gastroenteritis", prescription: "• Motilium Syrup (3ml)\n• ORS", weight: 11.5 }
+    ],
+    vaccines: { name: "تطعيم السنتين الإجباري", status: "تمت" }
+  },
+  {
+    id: "p2", name: "فاطمة عمر إبراهيم", phone: "01198765432", age: "5 سنوات", weight: 18, height: 110, temp: "37.0", type: "إعادة واستشارة",
+    history: [], vaccines: { name: "تطعيم جدري الماء", status: "مؤجلة" }
+  }
+];
 
-interface SelectedDrug {
-  uniqueId: string;
-  name: string;
-  concentration: string;
-  calculatedDose: string;
-  timesPerDay: number;
-  instruction: string;
-}
-
-// البيانات الأولية الافتراضية لقاعدة البيانات
 const initialDrugs: Drug[] = [
   { id: '1', name: 'Paracetamol (Cetal) Syrup', concentration: '250mg/5ml', baseDosePerKg: 15, timesPerDay: 3, instruction: 'عند اللزوم أو كل 8 ساعات' },
-  { id: '2', name: 'Paracetamol (Paramol) Drops', concentration: '100mg/1ml', baseDosePerKg: 15, timesPerDay: 4, instruction: 'نقاط بالفم عند السخونية' },
-  { id: '3', name: 'Amoxicillin (E-Mox) 250mg Susp', concentration: '250mg/5ml', baseDosePerKg: 40, timesPerDay: 3, instruction: 'بعد الأكل بانتظام لمدة 7 أيام' },
-  { id: '4', name: 'Augmentin 457mg Susp', concentration: '457mg/5ml', baseDosePerKg: 45, timesPerDay: 2, instruction: 'كل 12 ساعة بانتظام لمدة أسبوع' },
-  { id: '5', name: 'Brufen Syrup', concentration: '100mg/5ml', baseDosePerKg: 10, timesPerDay: 3, instruction: 'بعد الأكل كخافض حرارة' },
-]
+  { id: '2', name: 'Augmentin 457mg Susp', concentration: '457mg/5ml', baseDosePerKg: 45, timesPerDay: 2, instruction: 'كل 12 ساعة بانتظام لمدة أسبوع' },
+  { id: '3', name: 'Brufen Syrup', concentration: '100mg/5ml', baseDosePerKg: 10, timesPerDay: 3, instruction: 'بعد الأكل كخافض حرارة' },
+];
 
-const initialDiagnoses: DiagnosisPreset[] = [
-  { id: '1', title: 'التهاب حاد باللوزتين', eng: 'Acute Tonsillitis' },
-  { id: '2', title: 'نزلة معوية حادة', eng: 'Acute Gastroenteritis' },
-  { id: '3', title: 'التهاب الشعب الهوائية', eng: 'Acute Bronchiolitis' },
-]
-
-const initialQueue = [
-  { id: 1, name: "يوسف أحمد محمود", age: "سنتان", weight: 12, height: 85, temp: "38.5", type: "كشف جديد" },
-  { id: 2, name: "فاطمة عمر إبراهيم", age: "5 سنوات", weight: 18, height: 110, temp: "37.0", type: "إعادة واستشارة" },
-  { id: 3, name: "آدم مصطفى كريم", age: "8 أشهر", weight: 8, height: 68, temp: "39.1", type: "كشف جديد" },
-]
-
-export default function DoctorDashboard() {
-  const [activeView, setActiveView] = useState<'clinic' | 'database'>('clinic')
-  const [queue, setQueue] = useState(initialQueue)
-  const [currentPatient, setCurrentPatient] = useState<typeof initialQueue[0] | null>(null)
+export default function AdvancedDoctorDashboard() {
+  const [activeTab, setActiveTab] = useState<'clinic' | 'patients-archive' | 'financials' | 'settings'>('clinic');
   
-  // قواعد البيانات الديناميكية (Dynamic State)
-  const [drugsDB, setDrugsDB] = useState<Drug[]>(initialDrugs)
-  const [diagnosesDB, setDiagnosesDB] = useState<DiagnosisPreset[]>(initialDiagnoses)
-
-  // نماذج الإضافة لقاعدة البيانات الجديدة
-  const [newDrug, setNewDrug] = useState({ name: '', concentration: '250mg/5ml', baseDosePerKg: 15, timesPerDay: 3, instruction: '' })
-  const [newDiag, setNewDiag] = useState({ title: '', eng: '' })
-
-  // علامات فحص الحالة النشطة
-  const [patientWeight, setPatientWeight] = useState<number>(0)
-  const [patientHeight, setPatientHeight] = useState<number>(0)
-  const [patientTemp, setPatientTemp] = useState<string>('37.0')
-  const [complaint, setComplaint] = useState('')
-  const [diagnosis, setDiagnosis] = useState('')
+  // States النظام الرئيسي
+  const [patients, setPatients] = useState<Patient[]>(initialPatients);
+  const [queue, setQueue] = useState<Patient[]>(initialPatients);
+  const [currentPatient, setCurrentPatient] = useState<Patient | null>(null);
+  const [drugsDB, setDrugsDB] = useState<Drug[]>(initialDrugs);
   
-  // محرك البحث والروشتة
-  const [searchQuery, setSearchQuery] = useState('')
-  const [filteredDrugs, setFilteredDrugs] = useState<Drug[]>([])
-  const [selectedDrugsList, setSelectedDrugsList] = useState<SelectedDrug[]>([])
-  const [showPrintModal, setShowPrintModal] = useState(false)
+  // النظام المالي
+  const [expenses, setExpenses] = useState<Expense[]>([
+    { id: "e1", title: "مستلزمات طبية وجوانتي", amount: 150, category: "أدوات عيادة" },
+    { id: "e2", title: "صيانة التكييف", amount: 300, category: "صيانة" }
+  ]);
+  const [fees, setFees] = useState({ newVisit: 300, followUp: 100 });
+  const [totalRevenue, setTotalRevenue] = useState<number>(600); // كشوفات تجريبية سابقة
 
-  // مراقبة البحث التلقائي الفوري عن الأدوية
+  // نماذج الإضافة الفورية
+  const [showAddPatientModal, setShowAddPatientModal] = useState(false);
+  const [newPatientForm, setNewPatientForm] = useState({ name: '', phone: '', age: '', weight: 10, height: 80, temp: '37', type: 'كشف جديد' as const });
+  const [newExpenseForm, setNewExpenseForm] = useState({ title: '', amount: 0, category: 'عام' });
+
+  // مدخلات الفحص الحالية
+  const [patientWeight, setPatientWeight] = useState<number>(0);
+  const [patientHeight, setPatientHeight] = useState<number>(0);
+  const [patientTemp, setPatientTemp] = useState<string>('37.0');
+  const [complaint, setComplaint] = useState('');
+  const [diagnosis, setDiagnosis] = useState('');
+  const [selectedDrugsList, setSelectedDrugsList] = useState<any[]>([]);
+  
+  // البحث المتقدم
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredDrugs, setFilteredDrugs] = useState<Drug[]>([]);
+  const [archiveSearch, setArchiveSearch] = useState('');
+  const [searchCriteria, setSearchCriteria] = useState<'name' | 'diagnosis'>('name');
+
+  // معالجة البحث التلقائي عن الأدوية
   useEffect(() => {
     if (searchQuery.trim().length > 0) {
-      const filtered = drugsDB.filter(drug => 
-        drug.name.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-      setFilteredDrugs(filtered)
+      const filtered = drugsDB.filter(d => d.name.toLowerCase().includes(searchQuery.toLowerCase()));
+      setFilteredDrugs(filtered);
     } else {
-      setFilteredDrugs([])
+      setFilteredDrugs([]);
     }
-  }, [searchQuery, drugsDB])
+  }, [searchQuery, drugsDB]);
 
-  // حساب مؤشر كتلة الجسم التلقائي (BMI) للطفل
-  const calculateBMI = () => {
-    if (!patientWeight || !patientHeight) return '0.0'
-    const heightInMeters = patientHeight / 100
-    return (patientWeight / (heightInMeters * heightInMeters)).toFixed(1)
-  }
+  const handleStartExamination = (patient: Patient) => {
+    setCurrentPatient(patient);
+    setPatientWeight(patient.weight);
+    setPatientHeight(patient.height);
+    setPatientTemp(patient.temp);
+    setComplaint('');
+    setDiagnosis('');
+    setSelectedDrugsList([]);
+  };
 
-  const handleStartExamination = (patient: typeof initialQueue[0]) => {
-    setCurrentPatient(patient)
-    setPatientWeight(patient.weight)
-    setPatientHeight(patient.height)
-    setPatientTemp(patient.temp)
-    setComplaint('')
-    setDiagnosis('')
-    setSelectedDrugsList([])
-    setSearchQuery('')
-  }
-
-  // حساب معادلة جرعة الأطفال وإضافتها للجدول
   const handleAddDrug = (drug: Drug) => {
-    if (!patientWeight || patientWeight <= 0) {
-      alert('يرجى كتابة وزن الطفل أولاً لحساب الجرعة بدقة!')
-      return
-    }
-
-    const match = drug.concentration.match(/(\d+)mg\/(\d+)ml/)
-    let doseVolume = ""
+    const match = drug.concentration.match(/(\d+)mg\/(\d+)ml/);
+    let doseVolume = match ? (((patientWeight * drug.baseDosePerKg / drug.timesPerDay) * parseInt(match[2])) / parseInt(match[1])).toFixed(1) + " مل" : (patientWeight * 0.5).toFixed(0) + " نقطة";
     
-    if (match) {
-      const mg = parseInt(match[1])
-      const ml = parseInt(match[2])
-      const totalMgPerDay = patientWeight * drug.baseDosePerKg
-      const singleDoseMg = totalMgPerDay / drug.timesPerDay
-      doseVolume = ((singleDoseMg * ml) / mg).toFixed(1) + " مل"
-    } else {
-      doseVolume = (patientWeight * 0.5).toFixed(0) + " نقطة"
-    }
-
-    const newDrugItem: SelectedDrug = {
+    setSelectedDrugsList([...selectedDrugsList, {
       uniqueId: Math.random().toString(),
       name: drug.name,
       concentration: drug.concentration,
       calculatedDose: doseVolume,
       timesPerDay: drug.timesPerDay,
       instruction: drug.instruction
-    }
+    }]);
+    setSearchQuery('');
+  };
 
-    setSelectedDrugsList([...selectedDrugsList, newDrugItem])
-    setSearchQuery('')
-    setFilteredDrugs([])
-  }
+  // إنهاء الفحص وحفظ الزيارة وتحديث الحسابات
+  const handleFinalizeVisit = () => {
+    if (!currentPatient) return;
+    
+    const newVisit: Visit = {
+      date: new Date().toLocaleDateString('ar-EG'),
+      complaint,
+      diagnosis,
+      prescription: selectedDrugsList.map((d, i) => `${i+1}- ${d.name} -> ${d.calculatedDose} / ${d.timesPerDay} daily`).join('\n'),
+      weight: patientWeight
+    };
 
-  // إضافة دواء جديد لقاعدة البيانات من داخل التطبيق
-  const handleAddNewDrugToDB = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newDrug.name) return
-    const created: Drug = {
-      id: Math.random().toString(),
-      ...newDrug
-    }
-    setDrugsDB([...drugsDB, created])
-    setNewDrug({ name: '', concentration: '250mg/5ml', baseDosePerKg: 15, timesPerDay: 3, instruction: '' })
-    alert('✅ تم إضافة الصنف الجديد بنجاح لقاعدة بيانات العيادة!')
-  }
+    // تحديث تاريخ المريض الموحد
+    const updatedPatients = patients.map(p => {
+      if (p.id === currentPatient.id) {
+        return { ...p, history: [newVisit, ...p.history] };
+      }
+      return p;
+    });
 
-  // إضافة تشخيص جديد لقاعدة البيانات
-  const handleAddNewDiagToDB = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newDiag.title || !newDiag.eng) return
-    const created: DiagnosisPreset = {
-      id: Math.random().toString(),
-      ...newDiag
-    }
-    setDiagnosesDB([...diagnosesDB, created])
-    setNewDiag({ title: '', eng: '' })
-    alert('✅ تم إضافة التشخيص الجديد بنجاح!')
-  }
+    setPatients(updatedPatients);
+    
+    // إضافة الحسابات تلقائياً حسب نوع الكشف
+    const currentFee = currentPatient.type === "كشف جديد" ? fees.newVisit : fees.followUp;
+    setTotalRevenue(prev => prev + currentFee);
+
+    // إزالة من قائمة الانتظار
+    setQueue(queue.filter(p => p.id !== currentPatient.id));
+    setCurrentPatient(null);
+    alert('✅ تم حفظ الزيارة في السجل الطبي وتمرير الحسابات للصندوق اليومي!');
+  };
+
+  const handleAddPatientSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const created: Patient = {
+      id: "p_" + Math.random().toString(),
+      name: newPatientForm.name,
+      phone: newPatientForm.phone,
+      age: newPatientForm.age,
+      weight: newPatientForm.weight,
+      height: newPatientForm.height,
+      temp: newPatientForm.temp,
+      type: newPatientForm.type,
+      history: [],
+      vaccines: { name: "تطعيمات دورية منتظمة", status: "تمت" }
+    };
+    setPatients([created, ...patients]);
+    setQueue([created, ...queue]);
+    setShowAddPatientModal(false);
+  };
+
+  // حسابات الأرقام الكلية للميزانية
+  const totalExpenses = expenses.reduce((sum, item) => sum + item.amount, 0);
+  const netProfit = totalRevenue - totalExpenses;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-right font-sans antialiased text-slate-800" style={{ direction: 'rtl' }}>
+    <div className="min-h-screen bg-slate-100 text-right font-sans antialiased text-slate-800" style={{ direction: 'rtl' }}>
       
-      {/* هيدر المنظومة الرئيسي */}
-      <div className="bg-slate-900 text-white px-6 py-4 flex flex-col sm:flex-row justify-between items-center border-b border-blue-500/30 gap-4 shadow-lg">
+      {/* 🔝 شريط التنقل الاحترافي العلوي للنظام المالي والطبي */}
+      <div className="bg-slate-900 text-white px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4 border-b border-blue-500/20 shadow-md">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-600 rounded-xl shadow-md"><HeartPulse className="h-6 w-6 text-white" /></div>
+          <div className="p-2 bg-blue-600 rounded-xl shadow-lg"><HeartPulse className="h-6 w-6 text-white" /></div>
           <div>
-            <span className="bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-md text-[10px] font-bold">Smart Clinic v3.0</span>
-            <h1 className="text-lg font-black tracking-tight mt-0.5">منظومة العيادة الذكية المتقدمة لطب الأطفال</h1>
+            <h1 className="text-base font-black tracking-tight">منظومة العيادة الطبية المتكاملة (PediaClinic ERP)</h1>
+            <p className="text-[11px] text-blue-400 font-bold">بورد الطبيب الشامل، الأرشيف، والميزانية اليومية الموحدة</p>
           </div>
         </div>
 
-        {/* أزرار التحويل بين العيادة وإدخال البيانات */}
-        <div className="flex gap-2">
-          <button 
-            onClick={() => setActiveView('clinic')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${activeView === 'clinic' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
-          >
-            <Stethoscope className="h-4 w-4" /> شاشة الفحص والعيادة
+        {/* التبديل بين الشاشات المطلوبة بدقة */}
+        <div className="flex flex-wrap gap-1.5">
+          <button onClick={() => setActiveTab('clinic')} className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${activeTab === 'clinic' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>
+            <Stethoscope className="h-4 w-4" /> غرفة الفحص الحية
           </button>
-          <button 
-            onClick={() => setActiveView('database')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${activeView === 'database' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
-          >
-            <Settings className="h-4 w-4" /> إدارة قواعد البيانات ({drugsDB.length} صنف)
+          <button onClick={() => setActiveTab('patients-archive')} className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${activeTab === 'patients-archive' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>
+            <History className="h-4 w-4" /> السجلات والأرشيف الطبي
+          </button>
+          <button onClick={() => setActiveTab('financials')} className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${activeTab === 'financials' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>
+            <DollarSign className="h-4 w-4" /> الميزانية اليومية والتقارير
           </button>
         </div>
       </div>
 
-      {/* 1️⃣ العرض الأول: شاشة العيادة والفحص والكشف */}
-      {activeView === 'clinic' && (
+      {/* 1️⃣ التبويب الأول: غرفة الفحص الحية والعيادة */}
+      {activeTab === 'clinic' && (
         <div className="p-4 md:p-6 max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
           
-          {/* الجانب الأيمن: قائمة الحالات */}
-          <div className="lg:col-span-1 bg-white rounded-2xl border p-4 shadow-sm h-fit">
-            <h3 className="font-bold text-slate-800 border-b pb-2 flex items-center gap-2 text-sm">
-              <Clock className="h-4 w-4 text-blue-600" /> قائمة انتظار الأطفال اليوم ({queue.length})
-            </h3>
-            <div className="mt-3 space-y-2.5">
-              {queue.map((p) => (
-                <div 
-                  key={p.id} onClick={() => handleStartExamination(p)}
-                  className={`p-3.5 rounded-xl border transition-all cursor-pointer flex justify-between items-center ${currentPatient?.id === p.id ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-slate-50 hover:bg-slate-100'}`}
-                >
-                  <div>
-                    <h4 className="font-bold text-sm">{p.name}</h4>
-                    <p className="text-xs mt-1 opacity-80">السن: {p.age} | الوزن: {p.weight} كجم</p>
-                  </div>
-                  <span className="bg-white text-slate-700 px-2 py-0.5 rounded border text-xs font-bold">{p.temp}°م</span>
-                </div>
-              ))}
+          {/* الجانب الأيمن: قائمة الانتظار الحالية وزر تسجيل حالة */}
+          <div className="lg:col-span-1 space-y-4">
+            <button 
+              onClick={() => setShowAddPatientModal(true)}
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-md flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <UserPlus className="h-4 w-4" /> تسجيل مريض جديد بالانتظار
+            </button>
+
+            <div className="bg-white rounded-2xl border p-4 shadow-sm">
+              <h3 className="font-bold text-slate-800 border-b pb-2 flex items-center gap-2 text-xs">
+                <Clock className="h-4 w-4 text-blue-600" /> الحالات في الانتظار بالخارج ({queue.length})
+              </h3>
+              <div className="mt-3 space-y-2">
+                {queue.length === 0 ? (
+                  <p className="text-center text-slate-400 text-xs py-4">لا توجد حالات في الانتظار حالياً.</p>
+                ) : (
+                  queue.map((p) => (
+                    <div 
+                      key={p.id} onClick={() => handleStartExamination(p)}
+                      className={`p-3 rounded-xl border transition-all cursor-pointer ${currentPatient?.id === p.id ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-slate-50 hover:bg-slate-100'}`}
+                    >
+                      <h4 className="font-bold text-xs">{p.name}</h4>
+                      <p className="text-[11px] mt-0.5 opacity-80">النوع: <span className="font-bold">{p.type}</span> | السن: {p.age}</p>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
 
-          {/* الجانب الأيسر: بورد الكشف الطبي الشامل */}
-          <div className="lg:col-span-3">
+          {/* الجانب الأيسر: لوحة الفحص الشامل والسوابق المرضية للمريض المختار */}
+          <div className="lg:col-span-3 space-y-6">
             {currentPatient ? (
-              <div className="bg-white rounded-2xl border p-6 space-y-6 shadow-sm">
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 
-                {/* لوحة قياسات جسم الطفل الذكية */}
-                <div className="bg-slate-50 p-4 rounded-xl grid grid-cols-2 md:grid-cols-5 gap-4 text-xs font-bold text-slate-700 border">
-                  <div>الطفل: <span className="text-blue-600 font-black block text-sm mt-0.5">{currentPatient.name}</span></div>
-                  <div>السن الحالي: <span className="text-slate-900 block text-sm mt-0.5">{currentPatient.age}</span></div>
-                  <div>
-                    <span className="flex items-center gap-1"><Scale className="h-3.5 w-3.5 text-slate-400" /> الوزن (كجم)</span>
-                    <input type="number" className="w-full border rounded p-1 bg-white text-blue-600 font-black mt-0.5 text-center" value={patientWeight} onChange={(e) => setPatientWeight(parseFloat(e.target.value) || 0)} />
-                  </div>
-                  <div>
-                    <span className="flex items-center gap-1"><Ruler className="h-3.5 w-3.5 text-slate-400" /> الطول (سم)</span>
-                    <input type="number" className="w-full border rounded p-1 bg-white mt-0.5 text-center" value={patientHeight} onChange={(e) => setPatientHeight(parseFloat(e.target.value) || 0)} />
-                  </div>
-                  <div className="bg-blue-50/60 p-2 rounded-lg text-center border border-blue-100">
-                    <span className="text-blue-700 text-[10px]">مؤشر كتلة الجسم BMI</span>
-                    <span className="block text-sm font-black text-blue-800 mt-0.5">{calculateBMI()}</span>
-                  </div>
-                </div>
-
-                {/* التشخيص السريع بنقرة واحدة */}
-                <div>
-                  <span className="block text-xs font-bold text-slate-500 mb-2">💡 استدعاء تشخيص طبي مخزن وقالب جاهز:</span>
-                  <div className="flex flex-wrap gap-2">
-                    {diagnosesDB.map((diag) => (
-                      <button 
-                        key={diag.id} type="button" onClick={() => setDiagnosis(diag.eng)}
-                        className="bg-slate-100 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
-                      >
-                        {diag.title} ({diag.eng})
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* حقول التشخيص الطبي */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 mb-1.5">الشكوى الإكلينيكية (Chief Complaint)</label>
-                    <input type="text" className="w-full p-2.5 rounded-xl border text-xs font-mono text-left" style={{ direction: 'ltr' }} placeholder="e.g. Fever, persistent cough" value={complaint} onChange={(e) => setComplaint(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 mb-1.5">التشخيص الحالي (Diagnosis)</label>
-                    <input type="text" className="w-full p-2.5 rounded-xl border text-xs font-bold text-left" style={{ direction: 'ltr' }} placeholder="e.g. Acute Gastroenteritis" value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} />
-                  </div>
-                </div>
-
-                {/* محرك البحث عن الأدوية من قاعدة البيانات */}
-                <div className="border border-blue-200 bg-blue-50/20 p-4 rounded-xl space-y-2 relative">
-                  <label className="block text-xs font-black text-blue-800 flex items-center gap-1">
-                    <Search className="h-4 w-4" /> اكتب أول حرفين من اسم الدواء المقترح وسيتم حساب التركيز تلقائياً:
-                  </label>
-                  <input 
-                    type="text" className="w-full p-3 rounded-xl border font-bold text-xs text-left" style={{ direction: 'ltr' }}
-                    placeholder="Search by drug name (e.g. Cetal, Augmentin)..."
-                    value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-
-                  {/* نتائج البحث المنبثقة من قاعدة البيانات المحدثة */}
-                  {filteredDrugs.length > 0 && (
-                    <div className="absolute right-4 left-4 mt-1 bg-white border rounded-xl shadow-2xl max-h-48 overflow-y-auto z-50 divide-y">
-                      {filteredDrugs.map((drug) => (
-                        <div 
-                          key={drug.id} onClick={() => handleAddDrug(drug)}
-                          className="p-3 hover:bg-blue-600 hover:text-white text-xs font-mono text-left cursor-pointer flex justify-between items-center"
-                        >
-                          <span className="font-bold text-sm">{drug.name}</span>
-                          <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px]">{drug.concentration}</span>
-                        </div>
-                      ))}
+                {/* بورد الفحص والروشتة */}
+                <div className="xl:col-span-2 bg-white rounded-2xl border p-5 space-y-5 shadow-sm">
+                  <div className="bg-slate-50 p-3 rounded-xl border grid grid-cols-3 gap-2 text-xs font-bold">
+                    <div className="text-blue-600">الطفل الحالي: {currentPatient.name}</div>
+                    <div>نوع الكشف: {currentPatient.type}</div>
+                    <div className="text-left font-mono">الوزن: 
+                      <input type="number" className="w-12 border text-center rounded mx-1 bg-white" value={patientWeight} onChange={(e) => setPatientWeight(parseFloat(e.target.value) || 0)} /> كجم
                     </div>
-                  )}
-                </div>
+                  </div>
 
-                {/* جدول الروشتة وعرض العلاج الحلي */}
-                <div className="space-y-3">
-                  <h4 className="font-bold text-slate-700 text-xs flex items-center gap-1"><FileText className="h-4 w-4 text-emerald-600" /> الأصناف المضافة للروشتة الحالية:</h4>
-                  {selectedDrugsList.length === 0 ? (
-                    <div className="border border-dashed p-8 rounded-xl text-center text-slate-400 text-xs">لا يوجد أدوية مضافة حالياً. ابحث بالأعلى لإدراج العلاج وجرعته.</div>
-                  ) : (
-                    <div className="border rounded-xl overflow-hidden shadow-sm">
-                      <table className="w-full text-right text-xs">
-                        <thead className="bg-slate-800 text-white text-[11px]">
-                          <tr>
-                            <th className="p-3 text-left">اسم الدواء والتركيز</th>
-                            <th className="p-3 text-center">الجرعة حسب الوزن</th>
-                            <th className="p-3 text-center">التكرار</th>
-                            <th className="p-3">التعليمات للمنزل</th>
-                            <th className="p-3 text-center">حذف</th>
+                  {/* حقول الفحص الطبي */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">الأعراض والشكوى الحالية:</label>
+                      <input type="text" className="w-full p-2 rounded-lg border text-xs" placeholder="e.g. Cough, Fever" value={complaint} onChange={(e) => setComplaint(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">التشخيص الحالي (Diagnosis):</label>
+                      <input type="text" className="w-full p-2 rounded-lg border text-xs text-left font-bold" style={{ direction: 'ltr' }} placeholder="e.g. Acute Tonsillitis" value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} />
+                    </div>
+                  </div>
+
+                  {/* محرك البحث عن الأدوية والجرعة التلقائية */}
+                  <div className="bg-blue-50/40 p-3 rounded-xl border border-blue-100 relative">
+                    <label className="block text-[11px] font-black text-blue-800 mb-1">🔍 محرك البحث الذكي التلقائي عن صنف العلاج:</label>
+                    <input type="text" className="w-full p-2 rounded-lg border bg-white text-xs text-left font-mono" placeholder="Type first letters..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                    
+                    {filteredDrugs.length > 0 && (
+                      <div className="absolute right-3 left-3 mt-1 bg-white border rounded-xl shadow-xl max-h-40 overflow-y-auto z-50 divide-y">
+                        {filteredDrugs.map(d => (
+                          <div key={d.id} onClick={() => handleAddDrug(d)} className="p-2 hover:bg-blue-600 hover:text-white font-mono text-xs text-left cursor-pointer flex justify-between">
+                            <span>{d.name}</span><strong>{d.concentration}</strong>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* جدول الأدوية المضافة */}
+                  <div className="border rounded-xl overflow-hidden text-xs">
+                    <table className="w-full text-right">
+                      <thead className="bg-slate-800 text-white text-[10px]">
+                        <tr><th className="p-2">الصنف</th><th className="p-2 text-center">الجرعة للوزن</th><th className="p-2 text-center">التعليمات</th></tr>
+                      </thead>
+                      <tbody className="divide-y bg-white">
+                        {selectedDrugsList.map((d, i) => (
+                          <tr key={i}>
+                            <td className="p-2 font-mono text-left">{d.name}</td>
+                            <td className="p-2 text-center text-blue-600 font-bold bg-blue-50/20">{d.calculatedDose}</td>
+                            <td className="p-2 text-slate-500">{d.instruction}</td>
                           </tr>
-                        </thead>
-                        <tbody className="divide-y bg-white">
-                          {selectedDrugsList.map((drug) => (
-                            <tr key={drug.uniqueId} className="hover:bg-slate-50">
-                              <td className="p-3 font-mono text-left font-bold text-slate-900">{drug.name} <span className="text-slate-400 text-[10px]">({drug.concentration})</span></td>
-                              <td className="p-3 text-center font-black text-blue-600 bg-blue-50/20">{drug.calculatedDose}</td>
-                              <td className="p-3 text-center text-slate-700">{drug.timesPerDay} مرات يومياً</td>
-                              <td className="p-3 text-slate-500">{drug.instruction}</td>
-                              <td className="p-3 text-center">
-                                <button type="button" onClick={() => setSelectedDrugsList(selectedDrugsList.filter(d => d.uniqueId !== drug.uniqueId))} className="text-rose-500 hover:text-rose-700"><Trash2 className="h-4 w-4 mx-auto" /></button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2 border-t">
+                    <button onClick={handleFinalizeVisit} className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-md flex items-center gap-1">
+                      <CheckCircle className="h-4 w-4" /> اعتماد الكشف وإنهاء الحالة للطباعة
+                    </button>
+                  </div>
                 </div>
 
-                {/* أزرار الحفظ والاعتماد وعرض الروشتة للطباعة */}
-                <div className="flex justify-end gap-2 pt-4 border-t">
-                  <button type="button" onClick={() => setCurrentPatient(null)} className="px-4 py-2 border rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100">إغلاق بدون حفظ</button>
-                  <button 
-                    type="button" disabled={selectedDrugsList.length === 0}
-                    onClick={() => setShowPrintModal(true)}
-                    className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-md flex items-center gap-2 disabled:opacity-50"
-                  >
-                    <Eye className="h-4 w-4" /> معاينة وطباعة الروشتة الورقية
-                  </button>
+                {/* 📜 سوابق المرضى والزيارات القديمة والتطعيمات في نفس اللحظة */}
+                <div className="xl:col-span-1 bg-white rounded-2xl border p-4 space-y-4 shadow-sm">
+                  <h3 className="font-bold text-slate-800 border-b pb-2 flex items-center gap-1.5 text-xs text-blue-600">
+                    <History className="h-4 w-4" /> التاريخ المرضي السلوكي (Patient History)
+                  </h3>
+                  
+                  {/* التطعيمات */}
+                  <div className="p-2.5 bg-amber-50 rounded-lg border border-amber-200 text-xs">
+                    <span className="font-bold text-amber-800 block">🛡️ حالة تطعيمات الطفل المجدولة:</span>
+                    <div className="flex justify-between items-center mt-1">
+                      <span>{currentPatient.vaccines.name}</span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${currentPatient.vaccines.status === 'تمت' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>{currentPatient.vaccines.status}</span>
+                    </div>
+                  </div>
+
+                  {/* شريط الزيارات السابقة */}
+                  <div className="space-y-3 max-h-80 overflow-y-auto">
+                    <span className="text-[11px] font-bold text-slate-400 block">🗓️ زيارات سابقة مسجلة للملف للطفل:</span>
+                    {currentPatient.history.length === 0 ? (
+                      <p className="text-[11px] text-slate-400">لا توجد زيارات سابقة مسجلة (ملف طفل جديد أول مرة).</p>
+                    ) : (
+                      currentPatient.history.map((h, idx) => (
+                        <div key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs space-y-1">
+                          <div className="flex justify-between text-slate-500 font-bold text-[10px]"><span>التاريخ: {h.date}</span><span>الوزن: {h.weight} كجم</span></div>
+                          <p className="font-bold text-slate-800">التشخيص: <span className="text-rose-600">{h.diagnosis}</span></p>
+                          <p className="text-[11px] text-slate-400 whitespace-pre-line">{h.prescription}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
 
               </div>
             ) : (
-              <div className="bg-white border border-dashed border-slate-300 rounded-2xl p-24 text-center text-slate-400 flex flex-col items-center justify-center">
-                <Stethoscope className="h-14 w-14 text-slate-300 mb-2 stroke-1 animate-pulse" />
-                <h3 className="font-bold text-sm text-slate-700">شاشة الفحص جاهزة</h3>
-                <p className="text-xs text-slate-400 max-w-xs mt-1 leading-relaxed">الرجاء تحديد طفل من قائمة الانتظار الجانبية للبدء في تفعيل بروتوكول حساب الجرعات الإكلينيكي فوراً.</p>
+              <div className="bg-white border border-dashed rounded-2xl p-24 text-center text-slate-400 flex flex-col items-center justify-center">
+                <Stethoscope className="h-14 w-14 mb-2 stroke-1 text-slate-300 animate-pulse" />
+                <h3 className="font-bold text-xs text-slate-700">شاشة العيادة خالية</h3>
+                <p className="text-[11px] mt-1">اختر طفلاً من قائمة الانتظار على اليمين لبدء الكشف واستدعاء التاريخ المرضي والجرعات مباشرة.</p>
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* 2️⃣ العرض الثاني: لوحة تحكم إدخال وإدارة قواعد البيانات */}
-      {activeView === 'database' && (
-        <div className="p-4 md:p-6 max-w-[1400px] mx-auto space-y-6">
+      {/* 2️⃣ التبويب الثاني: أرشيف المرضى والبحث المتقدم بالمرض والتشخيص */}
+      {activeTab === 'patients-archive' && (
+        <div className="p-4 md:p-6 max-w-[1400px] mx-auto space-y-4">
           <div className="bg-white rounded-2xl border p-6 shadow-sm">
-            <h2 className="text-base font-black text-slate-900 border-b pb-3 flex items-center gap-2"><Settings className="h-5 w-5 text-blue-600" /> لوحة التحكم في بنك مدخلات العيادة (الأدوية والتشخيصات)</h2>
+            <h2 className="text-sm font-black text-slate-900 border-b pb-3 flex items-center gap-1.5"><History className="h-5 w-5 text-blue-600" /> أرشيف وقاعدة بيانات السجلات الشاملة لجميع الأطفال</h2>
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-6">
-              
-              {/* قسم إضافة وتعديل الأدوية */}
-              <div className="space-y-4">
-                <h3 className="text-xs font-black text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg w-fit">➕ إدخال صنف دواء جديد في السيستم:</h3>
-                <form onSubmit={handleAddNewDrugToDB} className="space-y-3 bg-slate-50 p-4 rounded-xl border">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">اسم الدواء العلمي/التجاري:</label>
-                    <input type="text" required className="w-full p-2 rounded-lg border text-xs text-left" style={{ direction: 'ltr' }} placeholder="e.g. Zithromax 200mg/5ml Susp" value={newDrug.name} onChange={(e) => setNewDrug({...newDrug, name: e.target.value})} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">التركيز الحالي المتاح:</label>
-                      <input type="text" required className="w-full p-2 rounded-lg border text-xs text-left" style={{ direction: 'ltr' }} placeholder="e.g. 250mg/5ml" value={newDrug.concentration} onChange={(e) => setNewDrug({...newDrug, concentration: e.target.value})} />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">الجرعة (مجم لكل 1 كجم من وزن الطفل):</label>
-                      <input type="number" required className="w-full p-2 rounded-lg border text-xs" value={newDrug.baseDosePerKg} onChange={(e) => setNewDrug({...newDrug, baseDosePerKg: parseInt(e.target.value) || 0})} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">عدد المرات في اليوم:</label>
-                      <input type="number" required className="w-full p-2 rounded-lg border text-xs" value={newDrug.timesPerDay} onChange={(e) => setNewDrug({...newDrug, timesPerDay: parseInt(e.target.value) || 1})} />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">تعليمات الاستخدام الافتراضية:</label>
-                      <input type="text" required className="w-full p-2 rounded-lg border text-xs" placeholder="مثال: بعد الأكل بانتظام" value={newDrug.instruction} onChange={(e) => setNewDrug({...newDrug, instruction: e.target.value})} />
-                    </div>
-                  </div>
-                  <button type="submit" className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs transition-colors flex items-center justify-center gap-1 shadow-sm"><Plus className="h-4 w-4" /> حفظ وإدراج الدواء في قاعدة البيانات</button>
-                </form>
-
-                {/* استعراض الأدوية الحالية */}
-                <h4 className="text-xs font-bold text-slate-700 pt-2">الأصناف المسجلة في بنك الأدوية الحالي ({drugsDB.length}):</h4>
-                <div className="border rounded-xl max-h-60 overflow-y-auto divide-y bg-white text-xs">
-                  {drugsDB.map(d => (
-                    <div key={d.id} className="p-2.5 flex justify-between items-center hover:bg-slate-50 font-mono">
-                      <span>{d.name} <strong className="text-blue-600 font-sans">({d.concentration})</strong></span>
-                      <button onClick={() => setDrugsDB(drugsDB.filter(item => item.id !== d.id))} className="text-rose-500 hover:text-rose-700"><Trash2 className="h-3.5 w-3.5" /></button>
-                    </div>
-                  ))}
-                </div>
+            {/* أداة الفلترة المتقدمة (بالاسم أو المرض) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 bg-slate-50 p-4 rounded-xl border">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">طريقة البحث والفرز المتقدم:</label>
+                <select className="w-full p-2 text-xs border rounded-lg bg-white" value={searchCriteria} onChange={(e: any) => setSearchCriteria(e.target.value)}>
+                  <option value="name">البحث باسم الطفل أو رقم الهاتف</option>
+                  <option value="diagnosis">البحث بتشخيص مرضي معين (مثال: Gastroenteritis)</option>
+                </select>
               </div>
-
-              {/* قسم إضافة التشخيصات */}
-              <div className="space-y-4">
-                <h3 className="text-xs font-black text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg w-fit">➕ إضافة قوالب تشخيصية شائعة جديدة:</h3>
-                <form onSubmit={handleAddNewDiagToDB} className="space-y-3 bg-slate-50 p-4 rounded-xl border">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">اسم المرض بالعربية (لزر الاستدعاء):</label>
-                    <input type="text" required className="w-full p-2 rounded-lg border text-xs" placeholder="مثال: نزلة معوية حادة" value={newDiag.title} onChange={(e) => setNewDiag({...newDiag, title: e.target.value})} />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">الاسم الطبي المعتمد بالإنجليزية (الذي يظهر بالروشتة):</label>
-                    <input type="text" required className="w-full p-2 rounded-lg border text-xs text-left font-bold" style={{ direction: 'ltr' }} placeholder="e.g. Acute Gastroenteritis" value={newDiag.eng} onChange={(e) => setNewDiag({...newDiag, eng: e.target.value})} />
-                  </div>
-                  <button type="submit" className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition-colors flex items-center justify-center gap-1 shadow-sm"><Plus className="h-4 w-4" /> حفظ وإدراج التشخيص</button>
-                </form>
-
-                <h4 className="text-xs font-bold text-slate-700 pt-2">التشخيصات المسجلة حالياً:</h4>
-                <div className="border rounded-xl max-h-60 overflow-y-auto divide-y bg-white text-xs">
-                  {diagnosesDB.map(d => (
-                    <div key={d.id} className="p-2.5 flex justify-between items-center hover:bg-slate-50">
-                      <span>{d.title} — <strong className="text-slate-500 font-mono text-[11px]">{d.eng}</strong></span>
-                      <button onClick={() => setDiagnosesDB(diagnosesDB.filter(item => item.id !== d.id))} className="text-rose-500 hover:text-rose-700"><Trash2 className="h-3.5 w-3.5" /></button>
-                    </div>
-                  ))}
-                </div>
+              <div className="md:col-span-2">
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">اكتب كلمة البحث هنا:</label>
+                <input 
+                  type="text" className="w-full p-2 text-xs border rounded-lg" placeholder="ابدأ كتابة أحرف البحث للحصول على نتائج الأرشيف..."
+                  value={archiveSearch} onChange={(e) => setArchiveSearch(e.target.value)}
+                />
               </div>
+            </div>
 
+            {/* جدول عرض النتائج الشامل للبحث */}
+            <div className="mt-4 border rounded-xl overflow-hidden text-xs">
+              <table className="w-full text-right">
+                <thead className="bg-slate-800 text-white text-[11px]">
+                  <tr>
+                    <th className="p-3">اسم الطفل الكود</th>
+                    <th className="p-3">رقم الهاتف للاتصال</th>
+                    <th className="p-3">السن</th>
+                    <th className="p-3">عدد الزيارات الإجمالية بالملف</th>
+                    <th className="p-3">آخر تشخيص طبي مسجل لها</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y bg-white">
+                  {patients
+                    .filter(p => {
+                      if (searchCriteria === 'name') {
+                        return p.name.toLowerCase().includes(archiveSearch.toLowerCase()) || p.phone.includes(archiveSearch);
+                      } else {
+                        return p.history.some(h => h.diagnosis.toLowerCase().includes(archiveSearch.toLowerCase()));
+                      }
+                    })
+                    .map((p, index) => (
+                      <tr key={index} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-3 font-bold text-slate-900">{p.name}</td>
+                        <td className="p-3 text-slate-500 font-mono">{p.phone}</td>
+                        <td className="p-3">{p.age}</td>
+                        <td className="p-3 text-center"><span className="bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-full text-[10px]">{p.history.length + 1} زيارة</span></td>
+                        <td className="p-3 font-mono text-left text-rose-600 font-bold">{p.history[0]?.diagnosis || "كشف جديد تماماً"}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
       )}
 
-      {/* 3️⃣ نافذة منبثقة (Modal) لمعاينة وطباعة الروشتة الحقيقية للعيادة */}
-      {showPrintModal && currentPatient && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-xl w-full border shadow-2xl p-6 relative flex flex-col justify-between min-h-[550px]">
-            
-            {/* رأس الروشتة الرسمية للعيادة */}
-            <div>
-              <div className="flex justify-between items-start border-b-2 border-slate-900 pb-4 mb-4">
-                <div className="text-right">
-                  <h2 className="text-base font-black text-slate-900">عيادة الأطفال التخصصية</h2>
-                  <p className="text-[10px] text-slate-500 font-bold mt-0.5">د. محمد جاد | استشاري طب الأطفال وحديثي الولادة</p>
-                </div>
-                <div className="text-left text-[10px] text-slate-400 font-mono">
-                  <p>Date: {new Date().toLocaleDateString('en-US')}</p>
-                  <p>Rx ID: #{Math.floor(Math.random() * 90000) + 10000}</p>
-                </div>
+      {/* 3️⃣ التبويب الثالث: النظام المالي والميزانية والمصروفات الحقيقية */}
+      {activeTab === 'financials' && (
+        <div className="p-4 md:p-6 max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* كروت التقارير المالية الكلية الذكية */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <span className="text-slate-400 text-[11px] font-bold block">إجمالي إيرادات الكشوفات اليوم</span>
+                <h3 className="text-xl font-black text-emerald-600 mt-1">{totalRevenue} ج.م</h3>
               </div>
-
-              {/* بيانات الطفل بالروشتة */}
-              <div className="bg-slate-100 p-2.5 rounded-lg grid grid-cols-3 gap-2 text-[11px] font-bold text-slate-700 mb-6">
-                <div>الطفل: <span className="text-slate-900">{currentPatient.name}</span></div>
-                <div>السن: <span className="text-slate-900">{currentPatient.age}</span></div>
-                <div>الوزن الحالي: <span className="text-blue-600 font-black">{patientWeight} كجم</span></div>
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <span className="text-slate-400 text-[11px] font-bold block">إجمالي المصروفات والنثريات</span>
+                <h3 className="text-xl font-black text-rose-600 mt-1">{totalExpenses} ج.م</h3>
               </div>
-
-              {/* علامة الـ Rx وجدول العلاج الطبية */}
-              <div className="space-y-4">
-                <div className="text-xl font-serif font-black text-slate-900 border-b pb-1 w-fit pr-2">Rx:</div>
-                <div className="space-y-3 pl-4">
-                  {selectedDrugsList.map((drug, idx) => (
-                    <div key={idx} className="font-mono text-left" style={{ direction: 'ltr' }}>
-                      <p className="font-bold text-xs text-slate-900">{idx + 1}. {drug.name} ({drug.concentration})</p>
-                      <p className="text-[11px] text-blue-600 font-sans font-black pl-4 mt-0.5">
-                        ➔ Take {drug.calculatedDose} — {drug.timesPerDay} times daily. ({drug.instruction})
-                      </p>
-                    </div>
-                  ))}
-                </div>
+              <div className="bg-white p-4 rounded-xl border border-blue-200 shadow-sm bg-blue-50/10">
+                <span className="text-blue-700 text-[11px] font-bold block">الصافي المالي الفعلي للعيادة</span>
+                <h3 className="text-xl font-black text-blue-700 mt-1">{netProfit} ج.م</h3>
               </div>
             </div>
 
-            {/* أزرار الإغلاق والطباعة الحقيقية للملف */}
-            <div className="flex gap-2 pt-4 border-t border-dashed mt-6">
-              <button 
-                type="button" onClick={() => setShowPrintModal(false)}
-                className="w-1/3 py-2 border rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 flex justify-center items-center gap-1"
-              >
-                <X className="h-4 w-4" /> إغلاق المعاينة
-              </button>
-              <button 
-                type="button" 
-                onClick={() => {
-                  window.print()
-                  setShowPrintModal(false)
-                  setQueue(queue.filter(p => p.id !== currentPatient.id))
-                  setCurrentPatient(null)
-                }}
-                className="w-2/3 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs shadow-md flex justify-center items-center gap-1.5"
-              >
-                <Printer className="h-4 w-4" /> أمر الطباعة وإخلاء الحالة فوراً
-              </button>
+            {/* جدول المصروفات والنثريات اليومية */}
+            <div className="bg-white rounded-2xl border p-4 shadow-sm">
+              <h3 className="text-xs font-black text-slate-800 border-b pb-2 mb-3">📋 قائمة النثريات والمصروفات التشغيلية اليومية:</h3>
+              <div className="border rounded-xl overflow-hidden text-xs">
+                <table className="w-full text-right">
+                  <thead className="bg-slate-100 text-slate-700 font-bold">
+                    <tr><th className="p-2.5">البند والمصروف</th><th className="p-2.5">الفئة</th><th className="p-2.5 text-center">المبلغ المدفوع</th></tr>
+                  </thead>
+                  <tbody className="divide-y bg-white">
+                    {expenses.map((e) => (
+                      <tr key={e.id}>
+                        <td className="p-2.5 font-medium">{e.title}</td>
+                        <td className="p-2.5 text-slate-400">{e.category}</td>
+                        <td className="p-2.5 text-center font-bold text-rose-600">{e.amount} ج.م</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-
           </div>
+
+          {/* نموذج إدخال وإدراج بند مصروفات جديد للصندوق */}
+          <div className="lg:col-span-1 bg-white rounded-2xl border p-5 shadow-sm h-fit">
+            <h3 className="text-xs font-black text-slate-900 border-b pb-2 flex items-center gap-1"><DollarSign className="h-4 w-4 text-rose-500" /> تسجيل بند نثريات/مصروفات جديد:</h3>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if(!newExpenseForm.title || newExpenseForm.amount<=0) return;
+              setExpenses([...expenses, { id: Math.random().toString(), ...newExpenseForm }]);
+              setNewExpenseForm({ title: '', amount: 0, category: 'عام' });
+            }} className="space-y-3 mt-3 text-xs">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">وصف البند والمصروف الافتراضي:</label>
+                <input type="text" required className="w-full p-2 border rounded-lg" placeholder="مثال: فاتورة الكهرباء أو شراء قطن طبى" value={newExpenseForm.title} onChange={(e) => setNewExpenseForm({...newExpenseForm, title: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">المبلغ المدفوع (ج.م):</label>
+                <input type="number" required className="w-full p-2 border rounded-lg" value={newExpenseForm.amount || ''} onChange={(e) => setNewExpenseForm({...newExpenseForm, amount: parseFloat(e.target.value) || 0})} />
+              </div>
+              <button type="submit" className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs tracking-wide shadow-sm">+ إدراج بند الصرف وتحديث الميزانية</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 4️⃣ النافذة المنبثقة لإدراج مريض جديد لقائمة الانتظار */}
+      {showAddPatientModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <form onSubmit={handleAddPatientSubmit} className="bg-white rounded-2xl max-w-md w-full border shadow-2xl p-5 space-y-4 text-xs">
+            <div className="flex justify-between items-center border-b pb-2">
+              <h3 className="font-black text-sm text-slate-900 flex items-center gap-1"><UserPlus className="h-4 w-4 text-blue-600" /> فتح تذكرة فحص لطفل جديد بالانتظار</h3>
+              <button type="button" onClick={() => setShowAddPatientModal(false)}><X className="h-4 w-4 text-slate-400" /></button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-bold mb-1">اسم الطفل ثلاثي أو ثنائي:</label>
+                <input type="text" required className="w-full p-2 border rounded-lg" placeholder="مثال: يوسف محمد عبد الرحمن" value={newPatientForm.name} onChange={(e) => setNewPatientForm({...newPatientForm, name: e.target.value})} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold mb-1">رقم الهاتف لولي الأمر:</label>
+                  <input type="text" required className="w-full p-2 border rounded-lg" placeholder="010..." value={newPatientForm.phone} onChange={(e) => setNewPatientForm({...newPatientForm, phone: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold mb-1">السن أو العمر الحركي:</label>
+                  <input type="text" required className="w-full p-2 border rounded-lg" placeholder="مثال: 3 سنوات أو 6 أشهر" value={newPatientForm.age} onChange={(e) => setNewPatientForm({...newPatientForm, age: e.target.value})} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold mb-1">نوع التذكرة الحالية:</label>
+                  <select className="w-full p-2 border rounded-lg bg-white" value={newPatientForm.type} onChange={(e: any) => setNewPatientForm({...newPatientForm, type: e.target.value})}>
+                    <option value="كشف جديد">كشف جديد عيادي</option>
+                    <option value="إعادة واستشارة">إعادة واستشارة دورية</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold mb-1">الوزن التقريبي بالخارج (كجم):</label>
+                  <input type="number" required className="w-full p-2 border rounded-lg" value={newPatientForm.weight} onChange={(e) => setNewPatientForm({...newPatientForm, weight: parseFloat(e.target.value) || 10})} />
+                </div>
+              </div>
+            </div>
+            <button type="submit" className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl tracking-wide shadow-md">إرسال الطفل فوراً لقائمة الانتظار بالخارج</button>
+          </form>
         </div>
       )}
 
     </div>
-  )
+  );
 }
