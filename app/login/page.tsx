@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { LoginUser } from '@/app/actions/authActions' // تأكد من اسم ومسار الـ Action لديك
 import { Download, Lock, User, ShieldAlert, Sparkles } from 'lucide-react'
 
 export default function LoginPage() {
@@ -17,16 +16,24 @@ export default function LoginPage() {
 
   const router = useRouter()
 
-  // دالة تسجيل الدخول الافتراضية للمشروع
+  // دالة تسجيل الدخول المحدثة باستخدام الـ fetch والـ API الحالي للمشروع
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
 
     try {
-      const res = await LoginUser(identifier, password)
-      if (res.success) {
-        // توجيه المستخدم حسب دوره الصادم من السيرفر
+      // إرسال الطلب إلى الـ API المتاح في مشروعك بالفعل
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier, password })
+      })
+
+      const res = await response.json()
+
+      if (response.ok && res.success) {
+        // التوجيه بناءً على الـ Role الراجع من الـ API
         if (res.user.role === 'doctor') {
           router.push('/doctor')
         } else if (res.user.role === 'assistant') {
@@ -46,8 +53,7 @@ export default function LoginPage() {
 
   // دالة تصدير المشروع كملف HTML مجمع (Backup Scheme)
   const handleExportHTML = () => {
-    // الرمز السري لحمايتك (يمكنك تغييره هنا كما تحب)
-    const SECRET_PIN = '2026' 
+    const SECRET_PIN = '2026' // الرمز السري لحمايتك
 
     if (pinCode !== SECRET_PIN) {
       alert('الرمز السري غير صحيح! لا يمكن تصدير ملفات النظام.')
@@ -55,8 +61,6 @@ export default function LoginPage() {
     }
 
     try {
-      // جلب محتوى ملف الكود الشامل المخزن أو توليد بنية المشروع الحالية
-      // سنقوم بصناعة ملف HTML يحتوي على الـ Source Code كـ Backup دائم
       const htmlContent = `
         <!DOCTYPE html>
         <html lang="ar" dir="rtl">
@@ -75,16 +79,14 @@ export default function LoginPage() {
         <body>
             <h1>📦 PediaCare Full Project Export Backup</h1>
             <p>تاريخ التصدير التلقائي المنظم: ${new Date().toLocaleDateString('ar-EG')}</p>
-            
             <div class="file-block">
                 <span class="file-name">📄 System Status:</span>
-                <pre>All secured modules (Doctor Dashboard, Assistant Dashboard, and Server Actions) are fully compiled.</pre>
+                <pre>All secured modules are fully compiled and ready.</pre>
             </div>
-            </body>
+        </body>
         </html>
       `
 
-      // توليد وتحميل الملف تلقائياً في المتصفح
       const blob = new Blob([htmlContent], { type: 'text/html' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -159,7 +161,7 @@ export default function LoginPage() {
         </form>
       </div>
 
-      {/* 🛠️ الزر السري المؤقت لتصدير المشروع (Export HTML) أسفل الصفحة */}
+      {/* الزر السري المؤقت لتصدير المشروع (Export HTML) أسفل الصفحة */}
       <div className="absolute bottom-4 left-4 z-50">
         <button
           onClick={() => setShowPinModal(true)}
