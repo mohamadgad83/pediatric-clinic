@@ -22,12 +22,19 @@ export function middleware(request: NextRequest) {
   }
 
   // 4. إذا كان مسجلاً ويحاول دخول صفحة الـ Login
-  if (isLoggedIn && pathname === '/login') {
-    return NextResponse.redirect(
-      new URL(userRole === 'doctor' ? '/doctor/dashboard' : '/assistant/dashboard', request.url)
-    );
-  }
+ // ❌ القديم (بيوجّه لـ /doctor/dashboard)
+if (isLoggedIn && pathname === '/login') {
+  return NextResponse.redirect(
+    new URL(userRole === 'doctor' ? '/doctor/dashboard' : '/assistant/dashboard', request.url)
+  );
+}
 
+// ✅ الجديد (بيوجّه لـ /doctor و /assistant)
+if (isLoggedIn && pathname === '/login') {
+  return NextResponse.redirect(
+    new URL(userRole === 'doctor' ? '/doctor' : '/assistant', request.url)
+  );
+}
   return NextResponse.next();
 }
 
