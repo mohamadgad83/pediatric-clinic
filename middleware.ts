@@ -1,44 +1,36 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-export function middleware(req: NextRequest) {
-    const path = req.nextUrl.pathname
+export function middleware(request: NextRequest) {
+  const isLoggedIn = request.cookies.get('isLoggedIn')?.value === 'true';
+  const userRole = request.cookies.get('userRole')?.value; // 'doctor' أو 'assistant'
+  const { pathname } = request.nextUrl;
 
-    const isLoggedIn = req.cookies.get('isLoggedIn')?.value === 'true'
-    
-    const publicPaths = ['/login', '/api/login']
-    const isPublic = publicPaths.some(p => path === p || path.startsWith('/api/'))
+  // 1. إذا لم يكن مسجلاً ويحاول دخول لوحات التحكم
+  if (!isLoggedIn && (pathname.startsWith('/doctor') || pathname.startsWith('/assistant'))) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
 
-    const protectedPaths = ['/doctor', '/assistant']
-    const isProtected = protectedPaths.some(p => path === p || path.startsWith(p + '/'))
+  // 2. حماية مسار الطبيب من المساعد
+  if (pathname.startsWith('/doctor') && userRole !== 'doctor') {
+    return NextResponse.redirect(new URL('/assistant/dashboard', request.url));
+  }
 
-    if (!isLoggedIn && isProtected) {
-        return NextResponse.redirect(new URL('/login', req.url))
-    }
+  // 3. حماية مسار المساعد من الطبيب
+  if (pathname.startsWith('/assistant') && userRole !== 'assistant') {
+    return NextResponse.redirect(new URL('/doctor/dashboard', request.url));
+  }
 
-    if (isLoggedIn && path === '/login') {
-        const role = req.cookies.get('userRole')?.value || 'assistant'
-        if (role === 'doctor') {
-            return NextResponse.redirect(new URL('/doctor', req.url))
-        }
-        return NextResponse.redirect(new URL('/assistant', req.url))
-    }
+  // 4. إذا كان مسجلاً ويحاول دخول صفحة الـ Login
+  if (isLoggedIn && pathname === '/login') {
+    return NextResponse.redirect(
+      new URL(userRole === 'doctor' ? '/doctor/dashboard' : '/assistant/dashboard', request.url)
+    );
+  }
 
-    if (isLoggedIn && isProtected) {
-        const role = req.cookies.get('userRole')?.value || 'assistant'
-
-        if (path.startsWith('/doctor') && role === 'assistant') {
-            return NextResponse.redirect(new URL('/assistant', req.url))
-        }
-
-        if (path.startsWith('/assistant') && role === 'doctor') {
-            return NextResponse.redirect(new URL('/doctor', req.url))
-        }
-    }
-
-    return NextResponse.next()
+  return NextResponse.next();
 }
 
 export const config = {
-    matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)']
-}
+  matcher: ['/doctor/:path*', '/assistant/:path*', '/login'],
+};
