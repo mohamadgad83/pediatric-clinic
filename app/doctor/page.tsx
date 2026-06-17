@@ -12,7 +12,7 @@ import {
   CheckCircle, 
   Clock, 
   FileText, 
-  FileMedical, 
+  FileHeart, 
   Plus, 
   Trash2, 
   Save, 
@@ -258,7 +258,7 @@ export default function DoctorDashboard() {
                       onClick={() => handleStartConsultation(app)}
                       className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 rounded-lg transition-colors flex items-center justify-center gap-1"
                     >
-                      <FileMedical className="h-3.5 w-3.5" /> بدء الفحص والروشتة
+                      <FileHeart className="h-3.5 w-3.5" /> بدء الفحص والروشتة
                     </button>
                   )}
                 </div>
