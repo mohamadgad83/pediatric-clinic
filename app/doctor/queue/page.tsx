@@ -1,262 +1,143 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
-import { useAuth } from '@/hooks/useAuth'
-import { useRouter } from 'next/navigation'
-import { Clock, User, Phone, RefreshCw, CheckCircle, XCircle, UserCheck, ChevronLeft } from 'lucide-react'
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
+import { Stethoscope, Play, CheckCircle2, UserCheck } from 'lucide-react';
 
-// ✅ تعريف الـ Interface بشكل صحيح
-interface QueueItem {
-    id: string
-    patient_id: string
-    queue_number: number
-    status: 'waiting' | 'in_clinic' | 'done' | 'cancelled'
-    appointment_date: string
-    vital_signs: any
-    notes: string | null
-    patients: {
-        name: string
-        parent_name: string
-        parent_phone: string
-    } | null
-}
+export default function DoctorQueueRealTime() {
+  const [activeQueue, setActiveQueue] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
-export default function DoctorQueuePage() {
-    const { user, loading } = useAuth()
-    const router = useRouter()
-    const [queue, setQueue] = useState<QueueItem[]>([])
-    const [loadingQueue, setLoadingQueue] = useState(true)
-    const [today, setToday] = useState('')
+  const fetchDoctorQueue = async () => {
+    setLoading(true);
+    // جلب الحالات المحولة للطبيب والمستمرة بالانتظار
+    const { data, error } = await supabase
+      .from('clinic_appointments')
+      .select('id, token_number, status, patient_id, clinic_patients(full_name, age_months, age_years)')
+      .in('status', ['waiting', 'serving'])
+      .order('status', { ascending: false }) // جعل الحالات الجاري فحصها بالأعلى
+      .order('token_number', { ascending: true });
 
-    useEffect(() => {
-        if (!loading && !user) {
-            router.push('/login')
-            return
+    if (data) setActiveQueue(data);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchDoctorQueue();
+
+    // الاستماع الفوري للتعديلات المفرزة من المساعد بالخارج
+    const doctorChannel = supabase
+      .channel('doctor-live-queue')
+      .on(
+        'postgres_changes',
+        { event: '*', filter: 'status=in.(waiting,serving,completed)', schema: 'public', table: 'clinic_appointments' },
+        () => {
+          fetchDoctorQueue();
         }
+      )
+      .subscribe();
 
-        const todayStr = new Date().toISOString().split('T')[0]
-        setToday(todayStr)
+    return () => {
+      supabase.removeChannel(doctorChannel);
+    };
+  }, []);
 
-        fetchQueue()
-    }, [user, loading, router])
+  // إنهاء الكشف وتحويل الحالة لمكتملة
+  const handleCompleteCheckup = async (appointmentId: string) => {
+    await supabase
+      .from('clinic_appointments')
+      .update({ status: 'completed' })
+      .match({ id: appointmentId });
+  };
 
-    // ✅ دالة جلب البيانات - تم تعديلها بالكامل
-    const fetchQueue = async () => {
-        setLoadingQueue(true)
-        const todayStr = new Date().toISOString().split('T')[0]
-        
-        const { data, error } = await supabase
-            .from('clinic_appointments')
-            .select(`
-                id,
-                patient_id,
-                queue_number,
-                status,
-                appointment_date,
-                vital_signs,
-                notes,
-                clinic_patients (
-                    name,
-                    parent_name,
-                    parent_phone
-                )
-            `)
-            .eq('appointment_date', todayStr)
-            .in('status', ['waiting', 'in_clinic'])
-            .order('queue_number', { ascending: true })
-
-        if (!error && data) {
-            // ✅ إعادة تشكيل البيانات - دي أهم خطوة
-            const formattedData: QueueItem[] = data.map((item: any) => ({
-                id: item.id,
-                patient_id: item.patient_id,
-                queue_number: item.queue_number,
-                status: item.status,
-                appointment_date: item.appointment_date,
-                vital_signs: item.vital_signs || {},
-                notes: item.notes || null,
-                patients: item.patients?.[0] || null
-            }))
-            
-            setQueue(formattedData)
-        }
-        setLoadingQueue(false)
-    }
-
-    const updateStatus = async (id: string, status: 'in_clinic' | 'done' | 'cancelled') => {
-        const { error } = await supabase
-            .from('clinic_appointments')
-            .update({ status })
-            .eq('id', id)
-
-        if (!error) {
-            fetchQueue()
-        }
-    }
-
-    const getStatusBadge = (status: string) => {
-        const colors: Record<string, string> = {
-            waiting: 'bg-yellow-100 text-yellow-700',
-            in_clinic: 'bg-green-100 text-green-700',
-            done: 'bg-blue-100 text-blue-700',
-            cancelled: 'bg-red-100 text-red-700'
-        }
-        const labels: Record<string, string> = {
-            waiting: 'في الانتظار',
-            in_clinic: 'في العيادة',
-            done: 'تم الكشف',
-            cancelled: 'ملغي'
-        }
-        return (
-            <span className={`px-3 py-1 rounded-full text-xs ${colors[status] || 'bg-gray-100 text-gray-700'}`}>
-                {labels[status] || status}
-            </span>
-        )
-    }
-
-    if (loading || loadingQueue) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center">
-                    <div className="text-4xl mb-4">🔄</div>
-                    <p className="text-gray-500">جاري التحميل...</p>
-                </div>
-            </div>
-        )
-    }
-
-    return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <header className="bg-white shadow-sm border-b">
-                <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={() => router.push('/doctor')}
-                            className="text-gray-600 hover:text-gray-800"
-                        >
-                            <ChevronLeft className="w-5 h-5" />
-                        </button>
-                        <h1 className="text-2xl font-bold text-gray-800">📋 قائمة الانتظار</h1>
-                    </div>
-                    <button
-                        onClick={fetchQueue}
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
-                    >
-                        <RefreshCw className="w-4 h-4" />
-                        تحديث
-                    </button>
-                </div>
-            </header>
-
-            <div className="max-w-4xl mx-auto p-6">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <p className="text-sm text-gray-500">تاريخ اليوم</p>
-                            <p className="font-medium">{today}</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-sm text-gray-500">عدد المنتظرين</p>
-                            <p className="text-2xl font-bold text-yellow-600">{queue.filter(q => q.status === 'waiting').length}</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-sm text-gray-500">في العيادة</p>
-                            <p className="text-2xl font-bold text-green-600">{queue.filter(q => q.status === 'in_clinic').length}</p>
-                        </div>
-                    </div>
-                </div>
-
-                {queue.length === 0 ? (
-                    <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-100">
-                        <div className="text-6xl mb-4">📋</div>
-                        <h3 className="text-xl font-semibold text-gray-700">قائمة الانتظار فارغة</h3>
-                        <p className="text-gray-400 mt-1">لا يوجد مرضى في الانتظار اليوم</p>
-                    </div>
-                ) : (
-                    <div className="space-y-3">
-                        {queue.map((item) => (
-                            <div
-                                key={item.id}
-                                className={`bg-white rounded-xl shadow-sm border p-6 transition ${
-                                    item.status === 'in_clinic' ? 'border-green-300 bg-green-50' : 'border-gray-100'
-                                }`}
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xl">
-                                            #{item.queue_number}
-                                        </div>
-                                        <div>
-                                            <h3 className="text-lg font-semibold">{item.patients?.name || 'غير معروف'}</h3>
-                                            <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
-                                                <span className="flex items-center gap-1">
-                                                    <User className="w-3 h-3" />
-                                                    {item.patients?.parent_name || 'غير معروف'}
-                                                </span>
-                                                <span className="flex items-center gap-1">
-                                                    <Phone className="w-3 h-3" />
-                                                    {item.patients?.parent_phone || 'غير معروف'}
-                                                </span>
-                                            </div>
-                                            {item.vital_signs && Object.keys(item.vital_signs).length > 0 && (
-                                                <div className="flex gap-3 mt-2 text-sm">
-                                                    {item.vital_signs.temperature && (
-                                                        <span className="bg-red-50 text-red-700 px-2 py-1 rounded">
-                                                            🌡️ {item.vital_signs.temperature}°C
-                                                        </span>
-                                                    )}
-                                                    {item.vital_signs.weight && (
-                                                        <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded">
-                                                            ⚖️ {item.vital_signs.weight}kg
-                                                        </span>
-                                                    )}
-                                                    {item.vital_signs.heart_rate && (
-                                                        <span className="bg-purple-50 text-purple-700 px-2 py-1 rounded">
-                                                            ❤️ {item.vital_signs.heart_rate}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        {getStatusBadge(item.status)}
-                                        {item.status === 'waiting' && (
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={() => updateStatus(item.id, 'in_clinic')}
-                                                    className="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"
-                                                    title="بدء الكشف"
-                                                >
-                                                    <UserCheck className="w-5 h-5" />
-                                                </button>
-                                                <button
-                                                    onClick={() => updateStatus(item.id, 'cancelled')}
-                                                    className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
-                                                    title="إلغاء"
-                                                >
-                                                    <XCircle className="w-5 h-5" />
-                                                </button>
-                                            </div>
-                                        )}
-                                        {item.status === 'in_clinic' && (
-                                            <button
-                                                onClick={() => updateStatus(item.id, 'done')}
-                                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                                            >
-                                                <CheckCircle className="w-4 h-4" />
-                                                إنهاء الكشف
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-8 text-right" dir="rtl">
+      
+      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-5 mb-8">
+        <div>
+          <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <Stethoscope className="h-6 w-6 text-teal-600" />
+            <span>شاشة الحالات الحالية للطبيب</span>
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">تحديث لحظي ومباشر للحالات التي يوجهها المساعد من الخارج.</p>
         </div>
-    )
+      </div>
+
+      {loading ? (
+        <p className="text-center text-xs text-slate-400 py-12">جاري تحديث لوحة الكشف الحية...</p>
+      ) : activeQueue.length === 0 ? (
+        <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 text-slate-400 text-xs">
+          لا يوجد أطفال محولين للكشف حالياً في الانتظار.
+        </div>
+      ) : (
+        <div className="space-y-3 max-w-4xl mx-auto">
+          {activeQueue.map((item) => {
+            const isServing = item.status === 'serving';
+            return (
+              <div 
+                key={item.id}
+                className={`bg-white dark:bg-slate-900 border rounded-2xl p-4 md:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all ${
+                  isServing 
+                    ? 'border-teal-500 shadow-sm ring-1 ring-teal-500/20 bg-gradient-to-l from-teal-50/20 via-transparent to-transparent' 
+                    : 'border-slate-100 dark:border-slate-800 opacity-75'
+                }`}
+              >
+                
+                {/* البيانات الأساسية للطفل */}
+                <div className="flex items-center gap-4">
+                  <div className={`h-11 w-11 font-mono font-black rounded-xl flex items-center justify-center text-sm ${
+                    isServing ? 'bg-teal-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                  }`}>
+                    {String(item.token_number).padStart(2, '0')}
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                      {item.clinic_patients?.full_name}
+                      {isServing && (
+                        <span className="text-[10px] bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-400 px-2 py-0.5 rounded-md font-medium flex items-center gap-1 animate-pulse">
+                          <UserCheck className="h-3 w-3" />
+                          الحالة الحالية
+                        </span>
+                      )}
+                    </h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                      عمر الطفل: {item.clinic_patients?.age_years} سنة و {item.clinic_patients?.age_months} شهر
+                    </p>
+                  </div>
+                </div>
+
+                {/* أزرار التحكم الفوري للطبيب */}
+                <div className="flex items-center gap-2 self-end sm:self-center">
+                  {isServing ? (
+                    <>
+                      <button
+                        onClick={() => router.push(`/doctor/patients/${item.patient_id}`)}
+                        className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all"
+                      >
+                        <Play className="h-3.5 w-3.5 fill-current" />
+                        <span>فتح الملف والكشف</span>
+                      </button>
+                      
+                      <button
+                        onClick={() => handleCompleteCheckup(item.id)}
+                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                        <span>إنهاء</span>
+                      </button>
+                    </>
+                  ) : (
+                    <span className="text-[11px] text-slate-400 font-medium pl-2">بانتظار توجيهه من المساعد...</span>
+                  )}
+                </div>
+
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
