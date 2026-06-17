@@ -10,5 +10,8 @@ useEffect(() => {
         setConsultationPrice(data.consultation_price);
       }
     }
+   fetchSettings();
+    };
+
     fetchSettings();
-  }, []); // تم إصلاح القوس والمصفوفة هنا لتكون سليمة بنسبة 100%
+  }, [user, loading, router]); // ✅ اعتماديات الـ useEffect الصحيحة
