@@ -229,7 +229,7 @@ export default function DoctorAnalytics() {
               </h3>
 
               <div className="flex flex-col items-center justify-center py-4">
-                <div className="h-28 w-28 rounded-full border-4 border-emerald-500/20 border-t-emerald-500 flex flex-col items-center justify-center animate-spin-slow">
+                <div className="h-28 w-28 rounded-full border-4 border-emerald-500/20 border-t-emerald-500 flex flex-col items-center justify-center animate-spin-slow-medical">
                   <span className="text-2xl font-black font-mono text-slate-800 dark:text-white">100%</span>
                   <span className="text-[9px] text-slate-400 font-bold mt-0.5">جاهزية تامة</span>
                 </div>
