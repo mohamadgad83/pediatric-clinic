@@ -2,21 +2,26 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { 
+  HeartPulse, User, Lock, ArrowLeft, 
+  Eye, EyeOff, Loader2, ShieldAlert, LayoutGrid 
+} from 'lucide-react'
 
 export default function LoginPage() {
+  const router = useRouter()
+  
+  // حالات المدخلات والتحميل
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [showPinModal, setShowPinModal] = useState(false)
-  const [pinCode, setPinCode] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const router = useRouter()
-
-  const handleLogin = async (e: React.FormEvent) => {
+  // معالجة تسجيل الدخول وربطه بالـ API الخاص بك
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
-    setLoading(true)
+    setIsLoading(true)
+    setErrorMessage(null)
 
     try {
       const response = await fetch('/api/login', {
@@ -25,138 +30,139 @@ export default function LoginPage() {
         body: JSON.stringify({ identifier, password })
       })
 
-      const res = await response.json()
+      const result = await response.json()
 
-      if (response.ok && res.success) {
-        if (res.user.role === 'doctor') {
-          router.push('/doctor')
-        } else if (res.user.role === 'assistant') {
-          router.push('/assistant')
-        } else {
-          router.push('/admin')
-        }
-      } else {
-        setError(res.error || 'بيانات الدخول غير صحيحة')
+      if (!response.ok) {
+        throw new Error(result.error || 'فشل تسجيل الدخول، تأكد من البيانات.')
       }
-    } catch (err) {
-      setError('حدث خطأ غير متوقع أثناء تسجيل الدخول')
+
+      // حفظ البيانات محلياً للتأكيد (كما هو متبع في مشروعك)
+      localStorage.setItem('user_role', result.user.role)
+      localStorage.setItem('user_name', result.user.full_name)
+
+      // التوجيه التلقائي الذكي حسب الصلاحية المستلمة من الـ DB
+      if (result.user.role === 'doctor') {
+        router.push('/doctor')
+      } else if (result.user.role === 'assistant') {
+        router.push('/assistant')
+      } else {
+        // في حال وجود أدوار أخرى مستقبلاً مثل صيدلي أو مدير مالي
+        router.push('/')
+      }
+
+    } catch (error: any) {
+      console.error('Login Error:', error)
+      setErrorMessage(error.message || 'حدث خطأ غير متوقع أثناء الاتصال بالخادم.')
     } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleExportHTML = () => {
-    if (pinCode !== '2026') {
-      alert('الرمز السري غير صحيح!')
-      return
-    }
-
-    try {
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html lang="ar" dir="rtl">
-        <head>
-            <meta charset="UTF-8">
-            <title>PediaCare Backup</title>
-            <style>body { font-family: monospace; background: #1e1e1e; color: #d4d4d4; padding: 20px; }</style>
-        </head>
-        <body>
-            <h1>📦 PediaCare Full Project Export Backup</h1>
-            <p>تاريخ التصدير: ${new Date().toLocaleDateString('ar-EG')}</p>
-        </body>
-        </html>
-      `
-      const blob = new Blob([htmlContent], { type: 'text/html' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'pediaCare-backup-project.html'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-      setShowPinModal(false)
-      setPinCode('')
-      alert('تم تصدير ملف الأكواد بنجاح!')
-    } catch (err) {
-      alert('حدث خطأ أثناء محاولة التصدير.')
+      setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4 relative" style={{ direction: 'rtl', textAlign: 'right' }}>
-      <div className="bg-white p-8 rounded-2xl shadow-xl border border-slate-200 w-full max-w-md space-y-6">
-        <div className="text-center space-y-2">
-          <h2 className="text-2xl font-bold text-slate-800">بوابة دخول PediaCare</h2>
-          <p className="text-slate-400 text-xs">نظام الإدارة الآمن لعيادات طب الأطفال</p>
+    <div className="min-h-screen bg-slate-900 text-right font-sans antialiased flex flex-col justify-between p-6 relative overflow-hidden" style={{ direction: 'rtl' }}>
+      
+      {/* تأثير خلفية مضيئة شبكية */}
+      <div className="absolute inset-0 opacity-5 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:20px_20px] pointer-events-none"></div>
+      
+      {/* الهيدر العلوي: يحتوي على زر العودة لصفحة الاستكشاف (Explorer) */}
+      <div className="w-full max-w-md mx-auto flex justify-between items-center z-10">
+        <div className="flex items-center gap-2 text-white">
+          <HeartPulse className="h-5 w-5 text-blue-500 animate-pulse" />
+          <span className="font-black text-xs tracking-tight">PediaCare System</span>
         </div>
 
-        {error && (
-          <div className="p-3 bg-rose-50 text-rose-600 rounded-xl text-xs font-semibold border border-rose-100">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold text-slate-600 mb-1.5">اسم المستخدم أو البريد الإلكتروني</label>
-            <input 
-              type="text" required
-              className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="doctor أو assistant"
-              value={identifier} onChange={(e) => setIdentifier(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-600 mb-1.5">كلمة المرور</label>
-            <input 
-              type="password" required
-              className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="••••••••"
-              value={password} onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-
-          <button 
-            type="submit" disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white p-3 rounded-xl font-bold text-sm transition-all"
-          >
-            {loading ? 'جاري التحقق الرقمي...' : 'تسجيل الدخول للنظام'}
-          </button>
-        </form>
-      </div>
-
-      <div className="absolute bottom-4 left-4 z-50">
-        <button
-          onClick={() => setShowPinModal(true)}
-          className="bg-slate-800 hover:bg-slate-900 text-slate-200 px-3 py-2 rounded-xl text-xs font-bold transition-all"
+        {/* 🧭 الزر المطلوب لاستدعاء صفحة الـ Explorer */}
+        <button 
+          onClick={() => router.push('/')}
+          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 hover:border-slate-500 rounded-xl text-[11px] font-bold flex items-center gap-1.5 transition-all"
         >
-          تصدير ملف المشروع (export.html)
+          <LayoutGrid className="h-3.5 w-3.5 text-blue-400" />
+          <span>مستكشف الصفحات</span>
         </button>
       </div>
 
-      {showPinModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-sm space-y-4">
-            <div className="text-center">
-              <h3 className="font-bold text-slate-800 text-base">تحقق الأمان (Security PIN)</h3>
-            </div>
-            <input 
-              type="password" 
-              className="w-full p-3 text-center rounded-xl border font-bold text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="••••"
-              maxLength={4}
-              value={pinCode}
-              onChange={(e) => setPinCode(e.target.value)}
-            />
-            <div className="flex gap-2 text-xs font-bold pt-2">
-              <button onClick={() => { setShowPinModal(false); setPinCode(''); }} className="flex-1 py-2.5 border rounded-xl text-slate-500 hover:bg-slate-50">إلغاء</button>
-              <button onClick={handleExportHTML} className="flex-1 py-2.5 bg-slate-800 text-white rounded-xl">تأكيد وتحميل</button>
+      {/* كارت نموذج تسجيل الدخول */}
+      <div className="w-full max-w-md mx-auto bg-slate-950 border border-slate-800 rounded-3xl p-6 shadow-2xl shadow-blue-950/20 z-10 my-auto">
+        <div className="text-center space-y-2 mb-6">
+          <h1 className="text-xl font-black text-white tracking-tight">تسجيل الدخول للمنظومة</h1>
+          <p className="text-slate-400 text-xs">أدخل بيانات الحساب الخاص بك للولوج إلى لوحة التحكم</p>
+        </div>
+
+        {/* عرض رسائل الخطأ إن وجدت */}
+        {errorMessage && (
+          <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-start gap-2.5 text-xs text-rose-400 animate-fadeIn">
+            <ShieldAlert className="h-4 w-4 text-rose-500 shrink-0 mt-0.5" />
+            <p className="font-medium leading-relaxed">{errorMessage}</p>
+          </div>
+        )}
+
+        <form onSubmit={handleLoginSubmit} className="space-y-4">
+          
+          {/* حقل اسم المستخدم أو البريد */}
+          <div className="space-y-1.5">
+            <label className="block text-slate-300 font-bold text-[11px]">اسم المستخدم أو البريد الإلكتروني:</label>
+            <div className="relative">
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"><User className="h-4 w-4" /></span>
+              <input 
+                type="text"
+                required
+                disabled={isLoading}
+                className="w-full bg-slate-900 border border-slate-800 focus:border-blue-600 rounded-xl py-2.5 pr-10 pl-4 text-xs text-white placeholder-slate-600 focus:outline-none transition-colors font-mono text-left"
+                placeholder="e.g. doctor or assistant"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+              />
             </div>
           </div>
-        </div>
-      )}
+
+          {/* حقل كلمة المرور */}
+          <div className="space-y-1.5">
+            <label className="block text-slate-300 font-bold text-[11px]">كلمة المرور السرية:</label>
+            <div className="relative">
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"><Lock className="h-4 w-4" /></span>
+              <input 
+                type={showPassword ? 'text' : 'password'}
+                required
+                disabled={isLoading}
+                className="w-full bg-slate-900 border border-slate-800 focus:border-blue-600 rounded-xl py-2.5 pr-10 pl-10 text-xs text-white placeholder-slate-600 focus:outline-none transition-colors font-mono text-left"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button 
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* زر تقديم النموذج والتحميل */}
+          <button 
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black text-xs py-3 rounded-xl shadow-lg shadow-blue-600/10 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>جاري التحقق من الهوية...</span>
+              </>
+            ) : (
+              <span>تسجيل الدخول الآمن</span>
+            )}
+          </button>
+
+        </form>
+      </div>
+
+      {/* الفوتر السفلي */}
+      <div className="w-full text-center text-[10px] text-slate-600 font-bold z-10">
+        <p>جميع الحقوق محفوظة للمنظومة الطبية الذكية © {new Date().getFullYear()}</p>
+      </div>
+
     </div>
   )
 }
