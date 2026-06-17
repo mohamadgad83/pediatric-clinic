@@ -61,11 +61,11 @@ export default function AssistantDashboard() {
         fetchStats()
     }, [user, loading, router])
 
-    const handleLogout = async () => {
-        await supabase.auth.signOut()
-        router.push('/login')
-    }
-
+   const handleLogout = () => {
+    localStorage.removeItem('user')
+    localStorage.removeItem('isLoggedIn')
+    router.push('/login')
+}
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
