@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: 'class', // تفعل الوضع الداكن بشكل ذكي عبر كلاس المظهر المريح للعين
   content: [
     './app/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
@@ -7,8 +8,12 @@ module.exports = {
   theme: {
     extend: {
       animation: {
+        // الحركات القديمة الخاصة بمشروعك
         'spin-slow': 'spin-slow 20s linear infinite',
         'bounce-delay': 'bounce-delay 0.5s ease-in-out infinite',
+        
+        // الحركة المضافة الجديدة الخاصة بمؤشر كفاءة العيادة (سرعة دوران هادئة تليق بالهوية الطبية)
+        'spin-slow-medical': 'spin 8s linear infinite', 
       },
       keyframes: {
         'spin-slow': {
