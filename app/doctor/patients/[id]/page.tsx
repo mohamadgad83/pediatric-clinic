@@ -1,492 +1,170 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
-import { useAuth } from '@/hooks/useAuth'
-import { useRouter, useParams } from 'next/navigation'
-import { 
-    ArrowRight, Calendar, Phone, User, 
-    Stethoscope, FileText, Pill, Activity,
-    Plus, Edit, Clock, ChevronLeft
-} from 'lucide-react'
+import React, { useState, useEffect } from 'react';
+import { Calculator, Plus, Trash2, Printer, CheckCircle } from 'lucide-react';
 
-interface Patient {
-    id: string
-    name: string
-    birth_date: string
-    gender: string
-    parent_name: string
-    parent_phone: string
-    parent_email: string
-    address: string
-    custom_fields: any
-    created_at: string
+interface Medicine {
+  id: string;
+  name: string;
+  type: string; // 'syrup' | 'drops' | 'tablet'
+  baseDosePerKg: number; // ملغ لكل كجم
+  concentration: number; // تركيز الدواء (مثلاً 250 ملغ) لكل حجم معين (مثلاً 5 مل)
+  volume: number; 
 }
 
-interface MedicalRecord {
-    id: string
-    diagnosis: string
-    prescription: any
-    notes: string
-    created_at: string
-    appointment_id: string
-}
+export default function SmartPrescription({ childWeight = 12 }: { childWeight?: number }) {
+  // أدوية افتراضية شائعة في طب الأطفال للاختيار السريع
+  const [availableMedicines] = useState<Medicine[]>([
+    { id: '1', name: 'بروفين شراب (Iprofen)', type: 'syrup', baseDosePerKg: 10, concentration: 100, volume: 5 },
+    { id: '2', name: 'باراسيتامول شراب (Cetal)', type: 'syrup', baseDosePerKg: 15, concentration: 120, volume: 5 },
+    { id: '3', name: 'أوجمنتين (Augmentin 457)', type: 'syrup', baseDosePerKg: 30, concentration: 400, volume: 5 },
+  ]);
 
-interface Appointment {
-    id: string
-    appointment_date: string
-    appointment_time: string
-    queue_number: number
-    status: string
-    vital_signs: any
-    chief_complaint: string
-    created_at: string
-}
+  const [selectedMed, setSelectedMed] = useState<string>('');
+  const [calculatedDose, setCalculatedDose] = useState<string>('');
+  const [prescriptionList, setPrescriptionList] = useState<any[]>([]);
+  const [customNotes, setCustomNotes] = useState<string>('');
 
-export default function PatientPage() {
-    const { user, loading } = useAuth()
-    const router = useRouter()
-    const params = useParams()
-    const patientId = params.id as string
+  // دالة حساب الجرعة الآلية فور اختيار الدواء بناءً على وزن الطفل الحالي
+  const handleCalculateDose = (medId: string) => {
+    const med = availableMedicines.find(m => m.id === medId);
+    if (!med || !childWeight) return;
 
-    const [patient, setPatient] = useState<Patient | null>(null)
-    const [records, setRecords] = useState<MedicalRecord[]>([])
-    const [appointments, setAppointments] = useState<Appointment[]>([])
-    const [loadingPatient, setLoadingPatient] = useState(true)
-    const [activeTab, setActiveTab] = useState<'info' | 'records' | 'appointments'>('info')
-    const [showAddRecord, setShowAddRecord] = useState(false)
+    // المعادلة الطبية: (الوزن × الجرعة المطلوبة لكل كجم × حجم التركيز) / تركيز المادة الفعالة
+    const totalMgNeeded = childWeight * med.baseDosePerKg;
+    const exactMl = (totalMgNeeded * med.volume) / med.concentration;
+    
+    // تقسيمها على جرعات (مثلاً 3 مرات يومياً)
+    const perDose = (exactMl / 3).toFixed(1);
+    
+    setCalculatedDose(`${perDose} مل كل 8 ساعات (تلقائي بناءً على وزن الطفل: ${childWeight} كجم)`);
+  };
 
-    useEffect(() => {
-        if (!loading && !user) {
-            router.push('/login')
-            return
-        }
+  const addToPrescription = () => {
+    const med = availableMedicines.find(m => m.id === selectedMed);
+    if (!med) return;
 
-        const fetchPatient = async () => {
-            // جلب بيانات المريض
-            const { data: patientData, error: patientError } = await supabase
-                .from('clinic_patients')
-                .select('*')
-                .eq('id', patientId)
-                .single()
+    setPrescriptionList([
+      ...prescriptionList,
+      { id: Date.now().toString(), name: med.name, dose: calculatedDose, notes: customNotes }
+    ]);
+    
+    // تفريغ المدخلات
+    setSelectedMed('');
+    setCalculatedDose('');
+    setCustomNotes('');
+  };
 
-            if (patientError) {
-                router.push('/doctor/patients')
-                return
-            }
+  const removeItem = (id: string) => {
+    setPrescriptionList(prescriptionList.filter(item => item.id !== id));
+  };
 
-            setPatient(patientData)
-
-            // جلب السجلات الطبية
-            const { data: recordsData } = await supabase
-                .from('clinic_medical_records')
-                .select('*')
-                .eq('patient_id', patientId)
-                .order('created_at', { ascending: false })
-
-            setRecords(recordsData || [])
-
-            // جلب المواعيد
-            const { data: appointmentsData } = await supabase
-                .from('clinic_appointments')
-                .select('*')
-                .eq('patient_id', patientId)
-                .order('created_at', { ascending: false })
-
-            setAppointments(appointmentsData || [])
-            setLoadingPatient(false)
-        }
-
-        fetchPatient()
-    }, [user, loading, router, patientId])
-
-    const calculateAge = (birthDate: string) => {
-        const today = new Date()
-        const birth = new Date(birthDate)
-        let years = today.getFullYear() - birth.getFullYear()
-        let months = today.getMonth() - birth.getMonth()
-        if (months < 0) {
-            years--
-            months += 12
-        }
-        if (years === 0) return `${months} شهر`
-        return `${years} سنة و ${months} شهر`
-    }
-
-    const getStatusBadge = (status: string) => {
-        const colors: Record<string, string> = {
-            waiting: 'bg-yellow-100 text-yellow-700',
-            in_clinic: 'bg-green-100 text-green-700',
-            done: 'bg-blue-100 text-blue-700',
-            cancelled: 'bg-red-100 text-red-700'
-        }
-        const labels: Record<string, string> = {
-            waiting: 'في الانتظار',
-            in_clinic: 'في العيادة',
-            done: 'تم الكشف',
-            cancelled: 'ملغي'
-        }
-        return (
-            <span className={`px-3 py-1 rounded-full text-xs ${colors[status] || 'bg-gray-100 text-gray-700'}`}>
-                {labels[status] || status}
-            </span>
-        )
-    }
-
-    if (loading || loadingPatient) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center">
-                    <div className="text-4xl mb-4">🔄</div>
-                    <p className="text-gray-500">جاري التحميل...</p>
-                </div>
-            </div>
-        )
-    }
-
-    if (!patient) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center">
-                    <div className="text-6xl mb-4">😕</div>
-                    <h3 className="text-xl font-semibold">المريض غير موجود</h3>
-                    <button
-                        onClick={() => router.push('/doctor/patients')}
-                        className="mt-4 text-blue-600 hover:text-blue-700"
-                    >
-                        العودة لقائمة المرضى
-                    </button>
-                </div>
-            </div>
-        )
-    }
-
-    return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <header className="bg-white shadow-sm border-b">
-                <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={() => router.push('/doctor/patients')}
-                            className="text-gray-600 hover:text-gray-800 flex items-center gap-1"
-                        >
-                            <ChevronLeft className="w-5 h-5" />
-                            رجوع
-                        </button>
-                        <h1 className="text-2xl font-bold text-gray-800">ملف المريض</h1>
-                    </div>
-                    <button
-                        onClick={() => setShowAddRecord(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                    >
-                        <Plus className="w-4 h-4" />
-                        إضافة سجل طبي
-                    </button>
-                </div>
-            </header>
-
-            <div className="max-w-7xl mx-auto p-6">
-                {/* Patient Info Card */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex items-start gap-4">
-                            <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-3xl">
-                                👶
-                            </div>
-                            <div>
-                                <h2 className="text-2xl font-bold">{patient.name}</h2>
-                                <div className="flex flex-wrap gap-3 mt-1 text-sm text-gray-600">
-                                    <span className="flex items-center gap-1">
-                                        <Calendar className="w-4 h-4" />
-                                        {calculateAge(patient.birth_date)}
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                        <User className="w-4 h-4" />
-                                        {patient.gender === 'male' ? 'ذكر' : patient.gender === 'female' ? 'أنثى' : 'غير محدد'}
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                        <Phone className="w-4 h-4" />
-                                        {patient.parent_phone}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="text-sm text-gray-500">
-                            <p>ولي الأمر: {patient.parent_name}</p>
-                            {patient.parent_email && (
-                                <p className="mt-1">البريد الإلكتروني: {patient.parent_email}</p>
-                            )}
-                            {patient.address && (
-                                <p className="mt-1">العنوان: {patient.address}</p>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Tabs */}
-                <div className="flex gap-2 mb-6">
-                    <button
-                        onClick={() => setActiveTab('info')}
-                        className={`px-6 py-2 rounded-lg transition ${
-                            activeTab === 'info'
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-white text-gray-600 hover:bg-gray-50'
-                        }`}
-                    >
-                        <Activity className="w-4 h-4 inline ml-1" />
-                        المعلومات
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('records')}
-                        className={`px-6 py-2 rounded-lg transition ${
-                            activeTab === 'records'
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-white text-gray-600 hover:bg-gray-50'
-                        }`}
-                    >
-                        <FileText className="w-4 h-4 inline ml-1" />
-                        السجلات الطبية ({records.length})
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('appointments')}
-                        className={`px-6 py-2 rounded-lg transition ${
-                            activeTab === 'appointments'
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-white text-gray-600 hover:bg-gray-50'
-                        }`}
-                    >
-                        <Clock className="w-4 h-4 inline ml-1" />
-                        المواعيد ({appointments.length})
-                    </button>
-                </div>
-
-                {/* Tab Content */}
-                {activeTab === 'info' && (
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <h3 className="text-lg font-semibold mb-4">معلومات إضافية</h3>
-                        {patient.custom_fields && Object.keys(patient.custom_fields).length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {Object.entries(patient.custom_fields).map(([key, value]) => (
-                                    <div key={key} className="bg-gray-50 p-3 rounded-lg">
-                                        <p className="text-sm text-gray-500">{key}</p>
-                                        <p className="font-medium">{String(value)}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-gray-400">لا توجد معلومات إضافية</p>
-                        )}
-                    </div>
-                )}
-
-                {activeTab === 'records' && (
-                    <div className="space-y-4">
-                        {records.length === 0 ? (
-                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
-                                <div className="text-4xl mb-4">📋</div>
-                                <p className="text-gray-400">لا توجد سجلات طبية لهذا المريض</p>
-                                <button
-                                    onClick={() => setShowAddRecord(true)}
-                                    className="mt-4 text-blue-600 hover:text-blue-700"
-                                >
-                                    إضافة أول سجل طبي
-                                </button>
-                            </div>
-                        ) : (
-                            records.map((record) => (
-                                <div key={record.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                                    <div className="flex justify-between items-start mb-3">
-                                        <h4 className="font-semibold text-lg">تشخيص: {record.diagnosis}</h4>
-                                        <span className="text-sm text-gray-400">
-                                            {new Date(record.created_at).toLocaleDateString('ar-EG')}
-                                        </span>
-                                    </div>
-                                    {record.prescription && record.prescription.length > 0 && (
-                                        <div className="mb-3">
-                                            <p className="text-sm font-medium text-gray-700">الوصفة الطبية:</p>
-                                            <div className="flex flex-wrap gap-2 mt-1">
-                                                {record.prescription.map((med: any, idx: number) => (
-                                                    <span key={idx} className="bg-green-50 text-green-700 px-3 py-1 rounded-full text-sm">
-                                                        {med.name} {med.dosage && `- ${med.dosage}`}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                    {record.notes && (
-                                        <p className="text-sm text-gray-600 mt-2">
-                                            <span className="font-medium">ملاحظات:</span> {record.notes}
-                                        </p>
-                                    )}
-                                </div>
-                            ))
-                        )}
-                    </div>
-                )}
-
-                {activeTab === 'appointments' && (
-                    <div className="space-y-4">
-                        {appointments.length === 0 ? (
-                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
-                                <div className="text-4xl mb-4">📅</div>
-                                <p className="text-gray-400">لا توجد مواعيد لهذا المريض</p>
-                            </div>
-                        ) : (
-                            appointments.map((appointment) => (
-                                <div key={appointment.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                                    <div className="flex flex-wrap justify-between items-start gap-2">
-                                        <div>
-                                            <p className="font-semibold">
-                                                {new Date(appointment.appointment_date).toLocaleDateString('ar-EG')}
-                                                {appointment.appointment_time && ` - ${appointment.appointment_time}`}
-                                            </p>
-                                            <p className="text-sm text-gray-500">رقم الدور: #{appointment.queue_number}</p>
-                                            {appointment.chief_complaint && (
-                                                <p className="text-sm text-gray-600 mt-1">
-                                                    <span className="font-medium">الشكوى الرئيسية:</span> {appointment.chief_complaint}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            {getStatusBadge(appointment.status)}
-                                            {appointment.vital_signs && Object.keys(appointment.vital_signs).length > 0 && (
-                                                <div className="flex gap-2 text-sm">
-                                                    {appointment.vital_signs.temperature && (
-                                                        <span className="bg-red-50 text-red-700 px-2 py-1 rounded">
-                                                            🌡️ {appointment.vital_signs.temperature}°C
-                                                        </span>
-                                                    )}
-                                                    {appointment.vital_signs.weight && (
-                                                        <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded">
-                                                            ⚖️ {appointment.vital_signs.weight}kg
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                )}
-            </div>
-
-            {/* Modal إضافة سجل طبي - مبسط */}
-            {showAddRecord && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xl font-bold">إضافة سجل طبي جديد</h3>
-                            <button
-                                onClick={() => setShowAddRecord(false)}
-                                className="text-gray-400 hover:text-gray-600"
-                            >
-                                ✕
-                            </button>
-                        </div>
-                        <form onSubmit={async (e) => {
-                            e.preventDefault()
-                            const formData = new FormData(e.target as HTMLFormElement)
-                            const diagnosis = formData.get('diagnosis') as string
-                            const notes = formData.get('notes') as string
-                            const medication = formData.get('medication') as string
-                            const dosage = formData.get('dosage') as string
-
-                            if (!diagnosis) return
-
-                            const prescription = medication ? [{ name: medication, dosage: dosage || '' }] : []
-
-                            const { error } = await supabase
-                                .from('clinic_medical_records')
-                                .insert({
-                                    patient_id: patientId,
-                                    diagnosis,
-                                    prescription,
-                                    notes,
-                                    created_by: user?.id
-                                })
-
-                            if (!error) {
-                                setShowAddRecord(false)
-                                // إعادة تحميل البيانات
-                                const { data: recordsData } = await supabase
-                                    .from('clinic_medical_records')
-                                    .select('*')
-                                    .eq('patient_id', patientId)
-                                    .order('created_at', { ascending: false })
-                                setRecords(recordsData || [])
-                            }
-                        }}>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        التشخيص *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="diagnosis"
-                                        required
-                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                                        placeholder="مثال: التهاب الحلق"
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            الدواء
-                                        </label>
-                                        <input
-                                            type="text"
-                                            name="medication"
-                                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                                            placeholder="اسم الدواء"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            الجرعة
-                                        </label>
-                                        <input
-                                            type="text"
-                                            name="dosage"
-                                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                                            placeholder="مثال: 5ml"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        ملاحظات
-                                    </label>
-                                    <textarea
-                                        name="notes"
-                                        rows={3}
-                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                                        placeholder="أي ملاحظات إضافية..."
-                                    />
-                                </div>
-                                <div className="flex gap-3">
-                                    <button
-                                        type="submit"
-                                        className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
-                                    >
-                                        حفظ
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowAddRecord(false)}
-                                        className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 transition"
-                                    >
-                                        إلغاء
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+  return (
+    <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 shadow-sm text-right" dir="rtl">
+      
+      {/* هيدر الموديل الهوية البصرية */}
+      <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4 mb-6">
+        <div className="p-2.5 bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 rounded-xl">
+          <Calculator className="h-5 w-5" />
         </div>
-    )
+        <div>
+          <h3 className="text-lg font-black text-slate-800 dark:text-slate-100">مساعد الجرعات الذكي والروشتة الإلكترونية</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">يحتسب الجرعة الآمنة بالمليمتر بناءً على الوزن المثبت حالياً للطفل</p>
+        </div>
+      </div>
+
+      {/* معطيات وتوليد الجرعة */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div>
+          <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-2">اختر الدواء / المضاد</label>
+          <select
+            value={selectedMed}
+            onChange={(e) => {
+              setSelectedMed(e.target.value);
+              handleCalculateDose(e.target.value);
+            }}
+            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
+          >
+            <option value="">-- اختر من القائمة لتفعيل الحاسبة --</option>
+            {availableMedicines.map(med => (
+              <option key={med.id} value={med.id}>{med.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-2">الجرعة المقترحة برمجياً (يمكنك التعديل عليها)</label>
+          <input
+            type="text"
+            value={calculatedDose}
+            onChange={(e) => setCalculatedDose(e.target.value)}
+            placeholder="ستظهر الجرعة المحسوبة هنا تلقائياً..."
+            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-800 dark:text-slate-100 font-medium focus:ring-2 focus:ring-teal-500"
+          />
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-2">ملاحظات إضافية (أو تعليمات خاصة بالطعام)</label>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={customNotes}
+            onChange={(e) => setCustomNotes(e.target.value)}
+            placeholder="مثال: قبل الأكل بنصف ساعة - يرج جيداً قبل الاستخدام..."
+            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
+          />
+          <button
+            onClick={addToPrescription}
+            disabled={!selectedMed}
+            className="px-4 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:opacity-40 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition-all"
+          >
+            <Plus className="h-4 w-4" />
+            <span>إضافة للروشتة</span>
+          </button>
+        </div>
+      </div>
+
+      {/* استعراض شكل الروشتة العصرية الحالية */}
+      <div className="border border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-4 bg-slate-50/50 dark:bg-slate-900/40">
+        <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-3">محتويات الروشتة الحالية للأم / الأب:</h4>
+        
+        {prescriptionList.length === 0 ? (
+          <p className="text-xs text-slate-400 text-center py-4">لا توجد أدوية مضافة في هذه الزيارة حتى الآن.</p>
+        ) : (
+          <div className="space-y-2.5">
+            {prescriptionList.map((item) => (
+              <div key={item.id} className="flex items-center justify-between bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700 shadow-xs">
+                <div>
+                  <h5 className="text-xs font-bold text-slate-800 dark:text-slate-100">Rx: {item.name}</h5>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1">💊 {item.dose}</p>
+                  {item.notes && <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">📌 {item.notes}</p>}
+                </div>
+                <button
+                  onClick={() => removeItem(item.id)}
+                  className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* أزرار الحفظ والطباعة */}
+      {prescriptionList.length > 0 && (
+        <div className="flex justify-end gap-3 mt-6 border-t border-slate-100 dark:border-slate-800 pt-4">
+          <button className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all">
+            <Printer className="h-4 w-4" />
+            <span>طباعة الروشتة الحرارية</span>
+          </button>
+          <button className="px-5 py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-teal-600/10 transition-all">
+            <CheckCircle className="h-4 w-4" />
+            <span>اعتماد وحفظ السجل الطبي كلياً</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
